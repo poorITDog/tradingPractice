@@ -1,4 +1,4 @@
-import { createMarket, listSymbols, symbolMeta } from './lib/market.js';
+import { createMarket, listSymbols, symbolMeta, fetchKlinesRange } from './lib/market.js';
 import {
   createAccount, placeOrder, cancelOrder, cancelAllOrders, amendOrder,
   maybeFillLimits, onMarkUpdate, settleFunding, accountSnapshot, liqPrice,
@@ -8,7 +8,8 @@ import {
 import { loadState, saveState, exportState, importState } from './lib/store.js';
 import {
   abilityScore, sixDimensions, rankTier, ma, entryVsMaSign,
-  maxDrawdownPct, sharpeLike,
+  maxDrawdownPct, sharpeLike, dayKey, buildDailyLedger, periodPnLStats,
+  aggregateCosts, pickEquitySeries, exportDailyStatementCsv, taipeiYMD, filterClosedTrades,
 } from './lib/analytics.js';
 import {
   startChallenge, challengeRemaining, settleChallenge, pushLeaderboard, exportScoreCard,
@@ -18,6 +19,10 @@ import {
   formatRank, nextRankHint, displayTier, TIER_LABEL,
 } from './lib/ladder.js';
 import { createDriveClient, DRIVE_FILE } from './lib/drive.js';
+import {
+  createReplaySession, stepReplay, playToResult, finishResult, synthBook, synthTicker,
+  currentCandle, replayProgress, replayTickMs,
+} from './lib/replay.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -26,6 +31,7 @@ const loaded = loadState();
 let state = loaded.state;
 if (!state.account) state.account = createAccount(state.settings.startBalance);
 if (!state.ladder) state.ladder = defaultLadder();
+if (!Array.isArray(state.replayResults)) state.replayResults = [];
 
 const market = createMarket({
   symbol: state.ui.symbol || 'BTCUSDT',
@@ -47,9 +53,24 @@ let rankSort = 'score';
 let lastLiqWarnAt = 0;
 let driveSyncStatus = 'disconnected';
 let lastOffSymbolPoll = 0;
+let portfolioMonth = null; // Date at month start
+let portfolioRange = '30';
+let portfolioDay = null;
+let portfolioFilterSym = '';
+let portfolioFilterFrom = '';
+let portfolioFilterTo = '';
+let blotterFilterSym = '';
+let blotterFilterFrom = '';
+let blotterFilterTo = '';
+let lastHourlySample = 0;
+// Replay session (isolated from live practice account).
+let replaySession = null;
+let liveBackup = null;
+let replayTimer = null;
+let replayLoadPct = 0;
 const FILL_TYPE = {
   liquidation: '強平', funding: '資金費', sl: '停損', tp: '止盈',
-  stop: '條件', taker: '吃單', maker: '掛單', limit: '限價', close: '平倉', open: '開倉',
+  stop: '條件', trail: '追蹤', taker: '吃單', maker: '掛單', limit: '限價', close: '平倉', open: '開倉',
 };
 const FILL_SIDE = { buy: '買', sell: '賣', long: '多', short: '空', funding: '資金費' };
 
@@ -75,7 +96,13 @@ const drive = createDriveClient({
   toast,
 });
 
+function isReplay() {
+  return !!(replaySession && replaySession.active);
+}
+
 function persist() {
+  // During replay the live account is swapped out — never write that to disk.
+  if (isReplay()) return;
   try {
     state.syncUpdatedAt = Date.now();
     const r = saveState(state);
@@ -87,23 +114,62 @@ function persist() {
   }
 }
 
+function persistReplayResultsOnly() {
+  if (!liveBackup) return;
+  const bak = {
+    account: state.account,
+    closedTrades: state.closedTrades,
+    equitySamples: state.equitySamples,
+  };
+  state.account = liveBackup.account;
+  state.closedTrades = liveBackup.closedTrades;
+  state.equitySamples = liveBackup.equitySamples;
+  try {
+    state.syncUpdatedAt = Date.now();
+    saveState(state);
+  } catch (e) {
+    console.warn('persistReplayResultsOnly', e);
+  } finally {
+    state.account = bak.account;
+    state.closedTrades = bak.closedTrades;
+    state.equitySamples = bak.equitySamples;
+  }
+}
+
+function activeTicker() {
+  if (isReplay()) {
+    const c = currentCandle(replaySession);
+    return c ? synthTicker(replaySession.symbol, c) : null;
+  }
+  return market.getTicker();
+}
+
+function activeBook() {
+  if (isReplay()) {
+    const c = currentCandle(replaySession);
+    return c ? synthBook(c.close) : null;
+  }
+  return market.getBook();
+}
+
+function activeSymbol() {
+  return isReplay() ? replaySession.symbol : market.getSymbol();
+}
+
 // Book for the active symbol, or a deep synthetic book for off-symbol close.
 function bookFor(sym) {
+  if (isReplay() && sym === replaySession.symbol) return activeBook();
   if (sym === market.getSymbol()) return market.getBook();
   const px = marks[sym] ?? lastPrices[sym];
   if (!(px > 0)) return null;
-  return {
-    asks: [[px * 1.00005, 1e9]],
-    bids: [[px * 0.99995, 1e9]],
-    ts: Date.now(),
-  };
+  return synthBook(px);
 }
 
 function markFor(sym) {
   if (marks[sym] != null) return marks[sym];
   if (lastPrices[sym] != null) return lastPrices[sym];
-  const t = market.getTicker();
-  if (t && market.getSymbol() === sym) return t.markApprox ? t.last : t.mark;
+  const t = activeTicker();
+  if (t && activeSymbol() === sym) return t.markApprox ? t.last : t.mark;
   return null;
 }
 
@@ -124,6 +190,32 @@ function confirmTradeAction({ title, body, confirmLabel = '確認', danger = fal
       if (!a) return;
       el.remove();
       resolve(a === 'ok');
+    };
+  });
+}
+
+function formSheet({ title, fields, confirmLabel = '確認' }) {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.className = 'confirm-sheet';
+    const inputs = fields.map((f) => `<label class="field">${f.label}
+      <input id="fs_${f.id}" type="${f.type || 'text'}" value="${f.value ?? ''}" step="any" /></label>`).join('');
+    el.innerHTML = `<div class="card" role="dialog" aria-modal="true">
+      <h3>${title}</h3>
+      ${inputs}
+      <div class="side-actions">
+        <button type="button" class="btn ghost" data-a="cancel">取消</button>
+        <button type="button" class="btn accent" data-a="ok">${confirmLabel}</button>
+      </div></div>`;
+    document.body.appendChild(el);
+    el.onclick = (e) => {
+      const a = e.target.closest('[data-a]')?.dataset.a;
+      if (!a) return;
+      if (a === 'cancel') { el.remove(); resolve(null); return; }
+      const out = {};
+      for (const f of fields) out[f.id] = el.querySelector('#fs_' + f.id)?.value ?? '';
+      el.remove();
+      resolve(out);
     };
   });
 }
@@ -150,10 +242,13 @@ async function selectSymbol(sym) {
 
 function refreshTicketHead() {
   const el = $('#ticketSym');
-  if (el) el.textContent = `${market.getSymbol()} 永續 · 逐倉 · 單向`;
+  if (!el) return;
+  const mode = isReplay() ? ' · 回放撮合簡化' : '';
+  el.textContent = `${activeSymbol()} 永續 · 逐倉 · 單向${mode}`;
 }
 
 async function pollOffSymbolRisk() {
+  if (isReplay()) return;
   const now = Date.now();
   if (now - lastOffSymbolPoll < 4000) return;
   lastOffSymbolPoll = now;
@@ -176,7 +271,10 @@ async function pollOffSymbolRisk() {
         }
       }
       if (t.fundingRate != null) {
-        settleFunding(state.account, sym, t.markApprox ? t.last : t.mark, t.fundingRate, now, t.nextFundingTime);
+        const fundEv = settleFunding(
+          state.account, sym, t.markApprox ? t.last : t.mark, t.fundingRate, now, t.nextFundingTime,
+        );
+        if (fundEv) sampleEquity();
       }
     } catch (_) { /* optional */ }
   }
@@ -194,6 +292,7 @@ function sampleEquity() {
 }
 
 function challengeBlocksTrading() {
+  if (isReplay()) return false;
   const ch = state.challenge;
   if (!ch || ch.status !== 'active') return false;
   return challengeRemaining(ch) <= 0;
@@ -254,6 +353,7 @@ function showView(name) {
   if (name === 'portfolio') renderPortfolio();
   if (name === 'analyze') renderAnalyze();
   if (name === 'rank') renderRank();
+  if (name === 'replay') renderReplay();
   if (name === 'settings') renderSettings();
 }
 
@@ -345,12 +445,14 @@ async function loadHourly() {
 
 function renderSymbols() {
   const box = $('#symbolTabs');
+  const cur = activeSymbol();
   box.innerHTML = listSymbols().map((s) =>
-    `<button type="button" data-sym="${s}" class="${s === market.getSymbol() ? 'active' : ''}">${s.replace('USDT', '')}</button>`
+    `<button type="button" data-sym="${s}" class="${s === cur ? 'active' : ''}">${s.replace('USDT', '')}</button>`
   ).join('');
   box.onclick = async (e) => {
     const b = e.target.closest('button[data-sym]');
     if (!b) return;
+    if (isReplay()) return toast('回放中不可切換合約，請先結束回放');
     state.ui.symbol = b.dataset.sym;
     persist();
     await market.setSymbol(b.dataset.sym);
@@ -363,12 +465,14 @@ function renderSymbols() {
 function renderIntervals() {
   const ivs = [['1', '1m'], ['5', '5m'], ['15', '15m'], ['60', '1h'], ['240', '4h'], ['D', '1D']];
   const box = $('#intervals');
+  const cur = isReplay() ? replaySession.interval : market.getInterval();
   box.innerHTML = ivs.map(([k, lab]) =>
-    `<button type="button" data-iv="${k}" class="${k === market.getInterval() ? 'active' : ''}">${lab}</button>`
+    `<button type="button" data-iv="${k}" class="${k === cur ? 'active' : ''}">${lab}</button>`
   ).join('');
   box.onclick = (e) => {
     const b = e.target.closest('button[data-iv]');
     if (!b) return;
+    if (isReplay()) return toast('回放中不可切換週期');
     market.setIntervalKey(b.dataset.iv);
     state.ui.interval = b.dataset.iv;
     persist();
@@ -399,7 +503,7 @@ function displayMarks() {
 }
 
 function updateTicker(t) {
-  if (!t) return;
+  if (!t || isReplay()) return;
   lastPrices[t.symbol] = t.last;
   marks[t.symbol] = t.markApprox ? null : t.mark;
   if (t.markApprox) {
@@ -441,6 +545,7 @@ function updateTicker(t) {
   updatePreSummary();
   warnLiqProximity();
   refreshTicketHead();
+  if ($('#view-portfolio')?.classList.contains('active')) renderPortfolio();
   // live candle last
   if (candleSeries && last) {
     try {
@@ -468,6 +573,7 @@ function checkFunding(t) {
   );
   if (ev) {
     toast(`資金費 ${ev.paymentUsdt.toFixed(4)} USDT`);
+    sampleEquity();
     persist();
   }
 }
@@ -498,7 +604,8 @@ function levEffective() {
 }
 
 function updatePreSummary() {
-  const t = market.getTicker();
+  const t = activeTicker();
+  const sym = activeSymbol();
   const rawQty = Number($('#qty').value) || 0;
   const lev = levEffective();
   const px = (ordType === 'limit' || ordType === 'stop_limit')
@@ -507,8 +614,8 @@ function updatePreSummary() {
   const el = $('#preSummary');
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const reduce = $('#reduceOnly')?.checked;
-  const pos = state.account.positions[market.getSymbol()];
-  const meta = t ? symbolMeta(market.getSymbol()) : null;
+  const pos = state.account.positions[sym];
+  const meta = t ? symbolMeta(sym) : null;
   let coinQty = rawQty;
   if (state.ui.qtyUnit === 'usdt' && px > 0 && meta) {
     coinQty = Math.floor((rawQty / px) / meta.lot) * meta.lot;
@@ -517,6 +624,7 @@ function updatePreSummary() {
   if ((ordType === 'stop_market' || ordType === 'stop_limit')
     && !(Number($('#triggerPrice').value) > 0)) canSubmit = false;
   if (ordType === 'stop_limit' && !(Number($('#limitPrice').value) > 0)) canSubmit = false;
+  if (ordType === 'stop_trail' && !(Number($('#trailPct')?.value) > 0)) canSubmit = false;
   if (!t || !(rawQty > 0) || !px) {
     el.textContent = challengeBlocksTrading()
       ? '排位賽已結束，請到「段位」頁結算'
@@ -577,12 +685,12 @@ function warnLiqProximity() {
 }
 
 function setQtyFromPct(pct) {
-  const t = market.getTicker();
+  const t = activeTicker();
   if (!t) return;
   const lev = levEffective();
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const px = t.last;
-  const meta = symbolMeta(market.getSymbol());
+  const meta = symbolMeta(activeSymbol());
   const usable = Math.max(0, snap.available) * (pct / 100) * 0.98;
   // IM = qty*px/lev → qty = usable * lev / px
   let qty = (usable * lev) / px;
@@ -603,9 +711,13 @@ function setQtyFromPct(pct) {
 function renderEquity() {
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const cls = snap.returnPct >= 0 ? 'up' : 'down';
+  const upnl = snap.equity - snap.wallet;
+  const upnlCls = upnl >= 0 ? 'up' : 'down';
   const deg = marks[market.getSymbol()] == null ? ' · 標記價降級' : '';
   $('#equityBar').innerHTML = `權益 <b class="mono">${snap.equity.toFixed(2)}</b>
+    · 錢包 ${snap.wallet.toFixed(2)}
     · 可用 ${snap.available.toFixed(2)}
+    · 未實現 <span class="${upnlCls}">${upnl >= 0 ? '+' : ''}${upnl.toFixed(2)}</span>
     · 收益 <span class="${cls}">${snap.returnPct >= 0 ? '+' : ''}${snap.returnPct.toFixed(2)}%</span>${deg}`;
 }
 
@@ -719,9 +831,12 @@ function renderPosTab() {
       </tr></thead><tbody>`
       + rows.map((o) => {
         const typeLab = o.ordType === 'stop_market' ? '條件市價'
-          : o.ordType === 'stop_limit' ? '條件限價' : '限價';
+          : o.ordType === 'stop_limit' ? '條件限價'
+          : o.ordType === 'stop_trail' ? `追蹤 ${o.trailPct}%` : '限價';
         const px = o.ordType === 'stop_market' ? `觸發 ${o.triggerPrice}`
-          : o.ordType === 'stop_limit' ? `觸發 ${o.triggerPrice} / 限 ${o.price}` : o.price;
+          : o.ordType === 'stop_limit' ? `觸發 ${o.triggerPrice} / 限 ${o.price}`
+          : o.ordType === 'stop_trail' ? `觸發 ${Number(o.triggerPrice).toFixed(2)} / 回撤 ${o.trailPct}%`
+          : o.price;
         const canAmend = o.ordType === 'limit' || o.ordType === 'stop_market' || o.ordType === 'stop_limit';
         return `<tr>
         <td>${new Date(o.createdAt).toLocaleTimeString()}</td>
@@ -749,8 +864,18 @@ function renderPosTab() {
       if (amend) amendOrderPrompt(amend.dataset.amend);
     };
   } else if (posTab === 'closed') {
-    const rows = [...(state.closedTrades || [])].reverse().slice(0, 100);
-    body.innerHTML = rows.length
+    const all = state.closedTrades || [];
+    const syms = [...new Set(all.map((t) => t.symbol))];
+    const rows = filterClosedTrades(all, {
+      sym: blotterFilterSym, from: blotterFilterFrom, to: blotterFilterTo,
+    }).slice().reverse().slice(0, 100);
+    body.innerHTML = `<div class="blotter-filters">
+      <label>合約 <select id="blSym"><option value="">全部</option>
+        ${syms.map((s) => `<option value="${s}" ${blotterFilterSym === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select></label>
+      <label>由 <input type="date" id="blFrom" value="${blotterFilterFrom}" /></label>
+      <label>至 <input type="date" id="blTo" value="${blotterFilterTo}" /></label>
+    </div>` + (rows.length
       ? `<table class="pos-table"><thead><tr>
         <th>平倉時間</th><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>出場</th>
         <th>已實現盈虧</th><th>費用</th><th>原因</th>
@@ -758,7 +883,7 @@ function renderPosTab() {
         + rows.map((t) => {
           const cls = t.pnlUsdt >= 0 ? 'up' : 'down';
           return `<tr>
-          <td>${new Date(t.closedAt).toLocaleString()}</td>
+          <td>${new Date(t.closedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
           <td>${t.symbol}</td>
           <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
           <td>${t.qty}</td><td>${Number(t.entry).toFixed(2)}</td><td>${Number(t.exit).toFixed(2)}</td>
@@ -766,34 +891,70 @@ function renderPosTab() {
           <td>${Number(t.feeUsdt || 0).toFixed(4)}</td>
           <td>${FILL_TYPE[t.reason] || t.reason || '平倉'}</td></tr>`;
         }).join('') + '</tbody></table>'
-      : '<p class="empty-hint">尚無已平倉紀錄 · 平倉後會顯示於此</p>';
+      : '<p class="empty-hint">尚無已平倉紀錄 · 平倉後會顯示於此</p>');
+    body.querySelector('#blSym')?.addEventListener('change', (e) => {
+      blotterFilterSym = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blFrom')?.addEventListener('change', (e) => {
+      blotterFilterFrom = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blTo')?.addEventListener('change', (e) => {
+      blotterFilterTo = e.target.value; renderPosTab();
+    });
   } else {
-    const fills = snap.fills;
-    body.innerHTML = fills.length
+    const allFills = state.account?.fills || [];
+    const syms = [...new Set(allFills.map((f) => f.symbol).filter(Boolean))];
+    const fills = allFills.filter((f) => {
+      if (blotterFilterSym && f.symbol !== blotterFilterSym) return false;
+      const k = dayKey(f.ts);
+      if (blotterFilterFrom && k < blotterFilterFrom) return false;
+      if (blotterFilterTo && k > blotterFilterTo) return false;
+      return true;
+    }).slice().reverse().slice(0, 100);
+    body.innerHTML = `<div class="blotter-filters">
+      <label>合約 <select id="blSym"><option value="">全部</option>
+        ${syms.map((s) => `<option value="${s}" ${blotterFilterSym === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select></label>
+      <label>由 <input type="date" id="blFrom" value="${blotterFilterFrom}" /></label>
+      <label>至 <input type="date" id="blTo" value="${blotterFilterTo}" /></label>
+    </div>` + (fills.length
       ? `<table class="pos-table"><thead><tr>
         <th>時間</th><th>合約</th><th>方向</th><th>類型</th><th>價格</th><th>數量</th><th>費用</th>
         </tr></thead><tbody>`
         + fills.map((f) => {
           const tag = FILL_TYPE[f.reason] || FILL_TYPE[f.liquidity] || f.liquidity || '—';
           const side = FILL_SIDE[f.side] || f.side;
-          return `<tr><td>${new Date(f.ts).toLocaleTimeString()}</td><td>${f.symbol}</td>
+          return `<tr><td>${new Date(f.ts).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td><td>${f.symbol}</td>
           <td>${side}</td><td>${tag}</td><td>${f.price}</td><td>${f.qty}</td>
           <td>${Number(f.feeUsdt || 0).toFixed(4)}</td></tr>`;
         }).join('')
         + '</tbody></table>'
-      : '<p class="empty-hint">尚無成交紀錄 · 成交後會顯示於此</p>';
+      : '<p class="empty-hint">尚無成交紀錄 · 成交後會顯示於此</p>');
+    body.querySelector('#blSym')?.addEventListener('change', (e) => {
+      blotterFilterSym = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blFrom')?.addEventListener('change', (e) => {
+      blotterFilterFrom = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blTo')?.addEventListener('change', (e) => {
+      blotterFilterTo = e.target.value; renderPosTab();
+    });
   }
 }
 
-function editTpSl(sym) {
+async function editTpSl(sym) {
   const pos = state.account.positions[sym];
   if (!pos) return;
-  const tpIn = window.prompt(`止盈價（留空清除）目前 ${pos.tp ?? '—'}`, pos.tp ?? '');
-  if (tpIn === null) return;
-  const slIn = window.prompt(`停損價（留空清除）目前 ${pos.sl ?? '—'}`, pos.sl ?? '');
-  if (slIn === null) return;
-  const tp = tpIn.trim() === '' ? null : Number(tpIn);
-  const sl = slIn.trim() === '' ? null : Number(slIn);
+  const vals = await formSheet({
+    title: `改 TP／SL · ${sym}`,
+    fields: [
+      { id: 'tp', label: '止盈價（留空清除）', value: pos.tp ?? '' },
+      { id: 'sl', label: '停損價（留空清除）', value: pos.sl ?? '' },
+    ],
+  });
+  if (!vals) return;
+  const tp = vals.tp.trim() === '' ? null : Number(vals.tp);
+  const sl = vals.sl.trim() === '' ? null : Number(vals.sl);
   if (tp != null && !(tp > 0)) return toast('止盈價無效');
   if (sl != null && !(sl > 0)) return toast('停損價無效');
   if (pos.side === 'long') {
@@ -809,16 +970,21 @@ function editTpSl(sym) {
   toast(`已更新 ${sym} 止盈／停損`);
 }
 
-function addMarginPrompt(sym) {
+async function addMarginPrompt(sym) {
   const pos = state.account.positions[sym];
   if (!pos) return;
   const cur = Number(pos.extraMarginUsdt) || 0;
-  const raw = window.prompt(
-    `調整逐倉保證金 USDT（${sym}）\n正數追加、負數減少；目前額外保證金 ${cur.toFixed(2)}`,
-    '100',
-  );
-  if (raw == null) return;
-  const amt = Number(raw);
+  const vals = await formSheet({
+    title: `調保證金 · ${sym}`,
+    fields: [{
+      id: 'amt',
+      label: `變動 USDT（正數追加／負數減少；目前額外 ${cur.toFixed(2)}）`,
+      value: '100',
+      type: 'number',
+    }],
+  });
+  if (!vals) return;
+  const amt = Number(vals.amt);
   if (!Number.isFinite(amt) || amt === 0) return toast('金額無效');
   const r = adjustIsolatedMargin(state.account, sym, amt, displayMarks());
   if (!r.ok) return toast('調保證金失敗：' + r.reason);
@@ -828,10 +994,15 @@ function addMarginPrompt(sym) {
   toast(amt > 0 ? `已追加 ${amt} USDT` : `已減少 ${-amt} USDT`);
 }
 
-function adjLevPrompt(sym) {
+async function adjLevPrompt(sym) {
   const pos = state.account.positions[sym];
   if (!pos) return;
-  const lev = Number(window.prompt(`調整槓桿（目前 ${pos.leverage}x，最高 50x）`, String(pos.leverage)));
+  const vals = await formSheet({
+    title: `調槓桿 · ${sym}`,
+    fields: [{ id: 'lev', label: `槓桿（目前 ${pos.leverage}x，最高 50x）`, value: String(pos.leverage), type: 'number' }],
+  });
+  if (!vals) return;
+  const lev = Number(vals.lev);
   if (!(lev >= 1 && lev <= 50)) return toast('槓桿無效');
   const r = setPositionLeverage(state.account, sym, lev);
   if (!r.ok) return toast('調整失敗：' + r.reason);
@@ -842,21 +1013,31 @@ function adjLevPrompt(sym) {
   toast(`已調槓桿至 ${lev}x`);
 }
 
-function amendOrderPrompt(orderId) {
+async function amendOrderPrompt(orderId) {
   const o = state.account.orders.find((x) => x.id === orderId && x.status === 'open');
   if (!o) return;
-  const patch = {};
+  const fields = [];
   if (o.ordType === 'stop_market' || o.ordType === 'stop_limit') {
-    const trig = Number(window.prompt('新觸發價', String(o.triggerPrice)));
+    fields.push({ id: 'triggerPrice', label: '觸發價', value: o.triggerPrice, type: 'number' });
+  }
+  if (o.ordType === 'limit' || o.ordType === 'stop_limit') {
+    fields.push({ id: 'price', label: '限價', value: o.price, type: 'number' });
+  }
+  fields.push({ id: 'qty', label: '數量', value: o.qty, type: 'number' });
+  const vals = await formSheet({ title: '修改委託', fields });
+  if (!vals) return;
+  const patch = {};
+  if (vals.triggerPrice != null) {
+    const trig = Number(vals.triggerPrice);
     if (!(trig > 0)) return toast('觸發價無效');
     patch.triggerPrice = trig;
   }
-  if (o.ordType === 'limit' || o.ordType === 'stop_limit') {
-    const price = Number(window.prompt('新限價', String(o.price)));
+  if (vals.price != null && fields.some((f) => f.id === 'price')) {
+    const price = Number(vals.price);
     if (!(price > 0)) return toast('限價無效');
     patch.price = price;
   }
-  const qty = Number(window.prompt('新數量', String(o.qty)));
+  const qty = Number(vals.qty);
   if (!(qty > 0)) return toast('數量無效');
   patch.qty = qty;
   const r = amendOrder(state.account, orderId, patch);
@@ -881,8 +1062,9 @@ async function confirmHighLev(lev) {
 }
 
 async function submitOrder(side) {
-  const t = market.getTicker();
-  const book = market.getBook();
+  const t = activeTicker();
+  const book = activeBook();
+  const sym = activeSymbol();
   if (!t) return toast('行情尚未就緒');
   if (challengeBlocksTrading()) return toast('排位賽已結束，請到「段位」頁查看結算');
   let qty = Number($('#qty').value);
@@ -890,7 +1072,7 @@ async function submitOrder(side) {
   const lev = levEffective();
   if (!(await confirmHighLev(lev))) return;
   const mark = t.markApprox ? null : t.mark;
-  const closes = hourlyCloses[market.getSymbol()] || [];
+  const closes = hourlyCloses[sym] || [];
   const ma20 = ma(closes, 20);
   const entryPx = (ordType === 'limit' || ordType === 'stop_limit')
     ? Number($('#limitPrice').value) : t.last;
@@ -898,7 +1080,7 @@ async function submitOrder(side) {
   if (state.ui.qtyUnit === 'usdt') {
     const px = entryPx || t.last;
     if (!(px > 0)) return toast('無法換算數量');
-    const meta = symbolMeta(market.getSymbol());
+    const meta = symbolMeta(sym);
     qty = Math.floor((qty / px) / meta.lot) * meta.lot;
     if (!(qty > 0)) return toast('換算後數量過小');
   }
@@ -921,7 +1103,7 @@ async function submitOrder(side) {
   }
 
   const input = {
-    symbol: market.getSymbol(),
+    symbol: sym,
     side,
     ordType,
     qty,
@@ -929,6 +1111,7 @@ async function submitOrder(side) {
       ? Number($('#limitPrice').value) : undefined,
     triggerPrice: (ordType === 'stop_market' || ordType === 'stop_limit')
       ? Number($('#triggerPrice').value) : undefined,
+    trailPct: ordType === 'stop_trail' ? Number($('#trailPct')?.value) : undefined,
     tif: ordType === 'limit' ? ($('#tif')?.value || 'GTC') : 'GTC',
     leverage: lev,
     reduceOnly,
@@ -937,12 +1120,14 @@ async function submitOrder(side) {
   };
   const ctx = {
     book,
-    marks: { ...displayMarks(), [market.getSymbol()]: mark ?? t.last },
+    marks: { ...displayMarks(), [sym]: mark ?? t.last },
     fees: fees(),
   };
+  lastPrices[sym] = t.last;
+  marks[sym] = mark ?? t.last;
   const r = placeOrder(state.account, input, ctx);
   if (!r.ok) return toast('下單失敗：' + r.reason);
-  const pos = state.account.positions[market.getSymbol()];
+  const pos = state.account.positions[sym];
   if (pos && vs != null) pos.entryVsMa = vs;
   if (input.sl != null && pos) {
     pos.slDistancePct = Math.abs(pos.entry - input.sl) / pos.entry / pos.leverage * 100;
@@ -952,12 +1137,15 @@ async function submitOrder(side) {
   persist();
   renderEquity();
   renderPosTab();
+  renderReplayBar();
   const px = r.fillPrice ?? entryPx ?? input.triggerPrice;
   const fee = r.feeUsdt ?? 0;
   const sideLab = side === 'long' ? '做多' : '做空';
-  toast((ordType === 'stop_market' || ordType === 'stop_limit')
-    ? `已掛條件單 ${sideLab} 觸發 ${input.triggerPrice}`
-    : `${sideLab} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
+  toast(ordType === 'stop_trail'
+    ? `已掛追蹤止損 ${sideLab} 回撤 ${input.trailPct}%`
+    : (ordType === 'stop_market' || ordType === 'stop_limit')
+      ? `已掛條件單 ${sideLab} 觸發 ${input.triggerPrice}`
+      : `${sideLab} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
   closeDrawer();
 }
 
@@ -1085,61 +1273,421 @@ async function closeAllPositions() {
   toast('已全部平倉');
 }
 
-function equityCurveSvg(samples) {
-  if (!samples?.length) {
-    return '<p style="color:var(--muted)">交易後會顯示權益曲線</p>';
+function equityCurveSvg(samples, rangeKey = '30') {
+  const series = pickEquitySeries(samples, rangeKey);
+  if (!series.length) {
+    return '<p class="empty-hint">交易後會顯示權益曲線</p>';
   }
-  const vals = samples.map((s) => s.equity);
+  const vals = series.map((s) => s.equity);
   const min = Math.min(...vals);
   const max = Math.max(...vals);
-  const w = 320; const h = 120; const pad = 8;
+  const w = 640; const h = 180; const padL = 48; const padR = 12; const padT = 12; const padB = 28;
   const span = Math.max(1e-9, max - min);
-  const pts = vals.map((v, i) => {
-    const x = pad + (i / Math.max(1, vals.length - 1)) * (w - pad * 2);
-    const y = h - pad - ((v - min) / span) * (h - pad * 2);
+  const t0 = series[0].t;
+  const t1 = series[series.length - 1].t;
+  const tSpan = Math.max(1, t1 - t0);
+  const pts = series.map((s) => {
+    const x = padL + ((s.t - t0) / tSpan) * (w - padL - padR);
+    const y = padT + (1 - (s.equity - min) / span) * (h - padT - padB);
     return `${x},${y}`;
   }).join(' ');
   const up = vals[vals.length - 1] >= vals[0];
-  return `<svg width="100%" viewBox="0 0 ${w} ${h}" class="equity-svg" aria-label="權益曲線">
-    <polyline fill="none" stroke="${up ? '#0ECB81' : '#F6465D'}" stroke-width="2" points="${pts}"/>
-  </svg>`;
+  const yMax = max.toFixed(0);
+  const yMin = min.toFixed(0);
+  const d0 = dayKey(t0);
+  const d1 = dayKey(t1);
+  const last = series[series.length - 1];
+  return `<div class="equity-chart-wrap" id="eqChartWrap"
+      data-series="${encodeURIComponent(JSON.stringify(series.map((s) => ({ t: s.t, equity: s.equity }))))}"
+      data-pad-l="${padL}" data-pad-r="${padR}" data-w="${w}">
+    <div class="equity-tip mono" id="eqTip">${dayKey(last.t)} · ${Number(last.equity).toFixed(2)} USDT</div>
+    <svg width="100%" viewBox="0 0 ${w} ${h}" class="equity-svg" id="eqSvg" role="img"
+      aria-label="權益曲線 ${d0} 至 ${d1}，${yMin} 至 ${yMax} USDT">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#1E2833"/>
+      <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#1E2833"/>
+      <text x="4" y="${padT + 4}" fill="#8B9AAB" font-size="10">${yMax}</text>
+      <text x="4" y="${h - padB}" fill="#8B9AAB" font-size="10">${yMin}</text>
+      <text x="${padL}" y="${h - 8}" fill="#8B9AAB" font-size="10">${d0}</text>
+      <text x="${w - padR}" y="${h - 8}" fill="#8B9AAB" font-size="10" text-anchor="end">${d1}</text>
+      <polyline fill="none" stroke="${up ? '#0ECB81' : '#F6465D'}" stroke-width="2" points="${pts}"/>
+      <line id="eqCross" x1="0" y1="${padT}" x2="0" y2="${h - padB}" stroke="#8B9AAB" stroke-width="1"
+        stroke-dasharray="3 3" opacity="0"/>
+      <circle id="eqDot" cx="0" cy="0" r="4" fill="${up ? '#0ECB81' : '#F6465D'}" opacity="0"/>
+    </svg></div>`;
+}
+
+// Bind pointer/touch tip for equity curve (exchange-style crosshair).
+function bindEquityChartTip() {
+  const wrap = $('#eqChartWrap');
+  const tip = $('#eqTip');
+  const svg = $('#eqSvg');
+  if (!wrap || !tip || !svg) return;
+  let series;
+  try { series = JSON.parse(decodeURIComponent(wrap.dataset.series || '')); } catch (_) { return; }
+  if (!series?.length) return;
+  const padL = Number(wrap.dataset.padL) || 48;
+  const padR = Number(wrap.dataset.padR) || 12;
+  const vbW = Number(wrap.dataset.w) || 640;
+  const t0 = series[0].t;
+  const t1 = series[series.length - 1].t;
+  const tSpan = Math.max(1, t1 - t0);
+  const vals = series.map((s) => s.equity);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = Math.max(1e-9, max - min);
+  const padT = 12; const padB = 28; const h = 180;
+  const showAt = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    const xSvg = ((clientX - rect.left) / Math.max(1, rect.width)) * vbW;
+    const clamped = Math.min(vbW - padR, Math.max(padL, xSvg));
+    const t = t0 + ((clamped - padL) / (vbW - padL - padR)) * tSpan;
+    let best = series[0]; let bestD = Math.abs(best.t - t);
+    for (const s of series) {
+      const d = Math.abs(s.t - t);
+      if (d < bestD) { best = s; bestD = d; }
+    }
+    const x = padL + ((best.t - t0) / tSpan) * (vbW - padL - padR);
+    const y = padT + (1 - (best.equity - min) / span) * (h - padT - padB);
+    const cross = $('#eqCross');
+    const dot = $('#eqDot');
+    if (cross) { cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('opacity', '1'); }
+    if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('opacity', '1'); }
+    tip.textContent = `${dayKey(best.t)} · ${Number(best.equity).toFixed(2)} USDT`;
+  };
+  const onMove = (e) => {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    if (x != null) showAt(x);
+  };
+  svg.addEventListener('pointermove', onMove);
+  svg.addEventListener('touchmove', onMove, { passive: true });
+  svg.addEventListener('click', onMove);
+}
+
+function openDayPnlSheet(day, row) {
+  if (!row) return;
+  const trades = row.trades || [];
+  const el = document.createElement('div');
+  el.className = 'confirm-sheet day-pnl-sheet';
+  const tradeRows = trades.length
+    ? `<table class="pos-table day-sheet-table"><thead><tr>
+        <th>時間</th><th>合約</th><th>方向</th><th>數量</th><th>已實現</th>
+      </tr></thead><tbody>${trades.map((t) => `<tr>
+        <td>${new Date(t.closedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })}</td>
+        <td>${t.symbol || '—'}</td>
+        <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
+        <td>${t.qty ?? '—'}</td>
+        <td class="${(t.pnlUsdt || 0) >= 0 ? 'up' : 'down'}">${fmtPnl(t.pnlUsdt)}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<p class="empty-hint">當日無平倉成交</p>';
+  el.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${day} 盈虧明細">
+    <h3>${day} 盈虧明細</h3>
+    <div class="day-sheet-sum mono">
+      <div>當日盈虧 <span class="${row.pnl >= 0 ? 'up' : 'down'}">${fmtPnl(row.pnl)}</span></div>
+      <div>已實現 ${fmtPnl(row.realized)} · 資金費 ${fmtPnl(row.funding)}</div>
+      <div>開倉費 ${Number(row.openFees).toFixed(2)} · 平倉費 ${Number(row.closeFees).toFixed(2)}</div>
+      <div>補倉 ${Number(row.transfer).toFixed(2)} · 開盤 ${Number(row.equityOpen).toFixed(2)} → 收盤 ${Number(row.equityClose).toFixed(2)}</div>
+    </div>
+    ${tradeRows}
+    <div class="side-actions" style="margin-top:12px">
+      <button type="button" class="btn accent" data-a="ok" style="width:100%">關閉</button>
+    </div></div>`;
+  document.body.appendChild(el);
+  el.onclick = (e) => {
+    if (e.target === el || e.target.closest('[data-a="ok"]')) el.remove();
+  };
+}
+
+function monthStart(d = new Date()) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function taipeiFirstWeekday(y, m) {
+  // m is 1-based; find UTC instant whose Taipei date is y-m-01, then weekday in Taipei.
+  let probe = Date.UTC(y, m - 1, 1, 0, 0, 0);
+  const want = `${y}-${String(m).padStart(2, '0')}-01`;
+  for (let i = 0; i < 36; i++) {
+    if (dayKey(probe) === want) break;
+    probe += 3600000;
+  }
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Taipei', weekday: 'short',
+  }).formatToParts(new Date(probe));
+  const wd = parts.find((p) => p.type === 'weekday')?.value;
+  return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[wd] ?? 0;
+}
+
+function fmtPnl(n) {
+  const v = Number(n) || 0;
+  return (v >= 0 ? '+' : '') + v.toFixed(2);
 }
 
 function renderPortfolio() {
   const el = $('#view-portfolio');
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const trades = closedTrades();
-  const score = abilityScore({
-    trades, equitySamples: state.equitySamples, startEquity: state.settings.startBalance,
+  const fills = state.account?.fills || [];
+  const topups = (state.account?.events || []).filter((e) => e.type === 'topup');
+  const ledger = buildDailyLedger({
+    trades,
+    fills,
+    topups,
+    equitySamples: state.equitySamples,
+    startEquity: state.settings.startBalance,
   });
+  // Live-update today: open = prior calendar day close (or startBalance); close = live equity.
+  const todayKey = dayKey(Date.now());
+  const ymd = taipeiYMD();
+  const yest = new Date(Date.UTC(ymd.y, ymd.m - 1, ymd.d - 1, 12, 0, 0));
+  const yestKey = dayKey(yest.getTime());
+  let prevClose = state.settings.startBalance;
+  if (ledger.has(yestKey) && ledger.get(yestKey).equityClose != null) {
+    prevClose = ledger.get(yestKey).equityClose;
+  } else {
+    const earlier = [...ledger.keys()].sort().reverse().find((k) => k < todayKey);
+    if (earlier != null && ledger.get(earlier).equityClose != null) {
+      prevClose = ledger.get(earlier).equityClose;
+    }
+  }
+  let todayRow = ledger.get(todayKey);
+  if (!todayRow) {
+    todayRow = {
+      key: todayKey, realized: 0, funding: 0, openFees: 0, closeFees: 0,
+      transfer: 0, trades: [], equityOpen: prevClose, equityClose: snap.equity, pnl: 0,
+    };
+    ledger.set(todayKey, todayRow);
+  }
+  todayRow.equityOpen = prevClose;
+  todayRow.equityClose = snap.equity;
+  todayRow.pnl = todayRow.equityClose - todayRow.equityOpen - (todayRow.transfer || 0);
+  const stats = periodPnLStats(ledger);
+  const costs = aggregateCosts(fills);
   const dd = maxDrawdownPct(state.equitySamples || []);
   const sh = sharpeLike(state.equitySamples || []);
   const wins = trades.filter((t) => t.pnlUsdt >= 0).length;
   const wr = trades.length ? (wins / trades.length * 100) : 0;
-  el.innerHTML = `<div class="page-head"><h1>資產組合</h1>
-    <p>權益曲線、風險指標與已平倉紀錄（此頁不下單）。</p></div>
-    <div class="panel-block mono">
-      權益 ${snap.equity.toFixed(2)} USDT · 錢包 ${snap.wallet.toFixed(2)} ·
-      收益 ${snap.returnPct.toFixed(2)}% · 已平倉 ${trades.length} 筆
-      ${score.ok ? ` · 能力分 ${score.score.toFixed(1)}（${rankTier(score.score)}）` : ' · 樣本不足'}
-      · 段位 ${formatRank(state.ladder)}
-    </div>
-    <div class="panel-block">
-      <h3>權益曲線</h3>
-      ${equityCurveSvg(state.equitySamples)}
-    </div>
-    <div class="panel-block mono">
-      <h3>風險指標</h3>
-      最大回撤 ${dd.toFixed(2)}% · Sharpe-like ${sh == null ? '—' : sh.toFixed(2)} ·
-      勝率 ${trades.length ? wr.toFixed(1) + '%' : '—'}
-    </div>
-    <div class="panel-block">
-      <h3>最近平倉</h3>
-      ${trades.slice(-20).reverse().map((t) =>
-        `<div class="lb-row"><span>${t.symbol} ${t.side === 'long' ? '多' : '空'}</span>
-        <span class="${t.pnlUsdt >= 0 ? 'up' : 'down'}">${t.pnlUsdt >= 0 ? '+' : ''}${t.pnlUsdt.toFixed(2)}</span></div>`
-      ).join('') || '<p style="color:var(--muted)">尚未平倉</p>'}
+  const upnl = snap.equity - snap.wallet;
+  const marginUsed = Number(snap.usedMargin) || 0;
+  if (!portfolioMonth) {
+    const t = taipeiYMD();
+    portfolioMonth = { y: t.y, m: t.m };
+  }
+  const y = portfolioMonth.y;
+  const m = portfolioMonth.m;
+  const firstDow = taipeiFirstWeekday(y, m);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const monthLabel = `${y}年${m}月`;
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push('<div class="pnl-day empty"></div>');
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const row = ledger.get(key);
+    const pnl = row?.pnl ?? 0;
+    const has = !!row;
+    const cls = !has ? '' : pnl > 0 ? 'up' : pnl < 0 ? 'down' : 'flat';
+    const sel = portfolioDay === key ? ' selected' : '';
+    const amt = has ? fmtPnl(pnl) : '—';
+    cells.push(`<button type="button" class="pnl-day ${cls}${sel}" data-day="${key}"
+      aria-label="${m}月${day}日 盈虧 ${amt} USDT">
+      <span class="pnl-date">${day}</span>
+      <span class="pnl-amt">${amt}</span>
+    </button>`);
+  }
+
+  // Drop stale day filter if that day has no ledger row (e.g. empty cell / month change).
+  if (portfolioDay && !ledger.has(portfolioDay)) portfolioDay = null;
+  const symSet = [...new Set(trades.map((t) => t.symbol))];
+  const filtered = filterClosedTrades(trades, {
+    sym: portfolioFilterSym,
+    day: portfolioDay || '',
+    from: portfolioFilterFrom,
+    to: portfolioFilterTo,
+  }).slice().reverse();
+
+  const posRows = snap.positions;
+  const totalNotional = posRows.reduce((s, p) => s + (p.notional || 0), 0) || 1;
+  const alloc = posRows.map((p) => {
+    const pct = (p.notional / totalNotional) * 100;
+    return `<div class="alloc-row">
+      <span>${p.symbol} ${p.side === 'long' ? '多' : '空'}</span>
+      <span class="alloc-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
+      <span>${p.notional.toFixed(2)}（${pct.toFixed(1)}%）</span>
     </div>`;
+  }).join('') || '<p class="empty-hint">目前無持倉</p>';
+
+  const rangeSeg = ['7', '30', '90', 'all'].map((k) => {
+    const lab = k === 'all' ? '全部' : k + '日';
+    return `<button type="button" data-range="${k}" class="${portfolioRange === k ? 'active' : ''}">${lab}</button>`;
+  }).join('');
+
+  el.innerHTML = `<div class="page-head"><h1>資產</h1>
+    <p>權益總覽、每日盈虧日曆與詳細曲線（此頁不下單）。</p></div>
+
+    <div class="asset-overview-grid">
+      <div class="asset-card"><span>總權益</span><b class="mono">${snap.equity.toFixed(2)}</b></div>
+      <div class="asset-card"><span>錢包餘額</span><b class="mono">${snap.wallet.toFixed(2)}</b></div>
+      <div class="asset-card"><span>可用</span><b class="mono">${snap.available.toFixed(2)}</b></div>
+      <div class="asset-card"><span>保證金占用</span><b class="mono">${marginUsed.toFixed(2)}</b></div>
+      <div class="asset-card"><span>未實現盈虧</span>
+        <b class="mono ${upnl >= 0 ? 'up' : 'down'}">${fmtPnl(upnl)}</b></div>
+    </div>
+
+    <div class="pnl-hero panel-block">
+      <div>
+        <div class="muted">今日盈虧（含未實現變動／已扣除補倉）</div>
+        <div class="pnl-hero-val ${stats.today >= 0 ? 'up' : 'down'}">${fmtPnl(stats.today)} USDT</div>
+      </div>
+      <div class="pnl-period mono">
+        <div>7日 <span class="${stats.d7 >= 0 ? 'up' : 'down'}">${fmtPnl(stats.d7)}</span></div>
+        <div>30日 <span class="${stats.d30 >= 0 ? 'up' : 'down'}">${fmtPnl(stats.d30)}</span></div>
+        <div>累計 <span class="${stats.cumulative >= 0 ? 'up' : 'down'}">${fmtPnl(stats.cumulative)}</span></div>
+        <div>累計收益 ${snap.returnPct.toFixed(2)}%</div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>每日盈虧日曆</h3>
+        <div class="month-nav">
+          <button type="button" id="calPrev" aria-label="上月">‹</button>
+          <span class="mono">${monthLabel}</span>
+          <button type="button" id="calNext" aria-label="下月">›</button>
+        </div>
+      </div>
+      <div class="pnl-cal-dow"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+      <div class="pnl-calendar">${cells.join('')}</div>
+      <p class="muted" style="font-size:11px;margin:8px 0 0">點選日期開啟當日明細（成交列）。日界線：Asia/Taipei。</p>
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>權益曲線</h3>
+        <div class="seg mini-seg" id="eqRangeSeg">${rangeSeg}</div>
+      </div>
+      ${equityCurveSvg(state.equitySamples, portfolioRange)}
+    </div>
+
+    <div class="asset-metrics">
+      <div class="asset-card"><span>最大回撤</span><b>${dd.toFixed(2)}%</b></div>
+      <div class="asset-card"><span>夏普近似值</span><b>${sh == null ? '—' : sh.toFixed(2)}</b></div>
+      <div class="asset-card"><span>勝率</span><b>${trades.length ? wr.toFixed(1) + '%' : '—'}</b></div>
+      <div class="asset-card"><span>手續費合計</span><b>${costs.fees.toFixed(2)}</b></div>
+      <div class="asset-card"><span>資金費合計</span><b class="${costs.funding >= 0 ? 'up' : 'down'}">${fmtPnl(costs.funding)}</b></div>
+    </div>
+
+    <div class="panel-block">
+      <h3>持倉佔比</h3>
+      ${alloc}
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>當前持倉</h3>
+        <button type="button" class="text-btn" data-go-trade>前往交易</button>
+      </div>
+      ${posRows.length ? `<table class="pos-table"><thead><tr>
+        <th>合約</th><th>方向</th><th>數量</th><th>價值</th><th>未實現</th><th>報酬率</th>
+        </tr></thead><tbody>` + posRows.map((p) => `<tr>
+          <td>${p.symbol}</td>
+          <td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? '多' : '空'}</td>
+          <td>${p.qty}</td><td>${p.notional.toFixed(2)}</td>
+          <td class="${p.upnl >= 0 ? 'up' : 'down'}">${fmtPnl(p.upnl)}</td>
+          <td class="${p.roiPct >= 0 ? 'up' : 'down'}">${fmtPnl(p.roiPct)}%</td>
+        </tr>`).join('') + '</tbody></table>'
+        : '<p class="empty-hint">尚無持倉 · <button type="button" class="text-btn" data-go-trade>前往交易</button></p>'}
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>已平倉紀錄</h3>
+        <label class="filter-sym">合約
+          <select id="pfSymFilter">
+            <option value="">全部</option>
+            ${symSet.map((s) => `<option value="${s}" ${portfolioFilterSym === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </label>
+        <label class="filter-sym">由 <input type="date" id="pfFrom" value="${portfolioFilterFrom}" /></label>
+        <label class="filter-sym">至 <input type="date" id="pfTo" value="${portfolioFilterTo}" /></label>
+        <button type="button" class="btn ghost" id="btnExportStmt" style="width:auto">匯出日結 CSV</button>
+      </div>
+      ${filtered.length ? `<table class="pos-table"><thead><tr>
+        <th>時間</th><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>出場</th>
+        <th>已實現</th><th>費用</th>
+        </tr></thead><tbody>` + filtered.slice(0, 80).map((t) => `<tr>
+          <td>${new Date(t.closedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
+          <td>${t.symbol}</td>
+          <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
+          <td>${t.qty}</td><td>${Number(t.entry).toFixed(2)}</td><td>${Number(t.exit).toFixed(2)}</td>
+          <td class="${t.pnlUsdt >= 0 ? 'up' : 'down'}">${fmtPnl(t.pnlUsdt)}</td>
+          <td>${Number(t.feeUsdt || 0).toFixed(4)}</td>
+        </tr>`).join('') + '</tbody></table>'
+        : '<p class="empty-hint">尚無符合條件的已平倉紀錄</p>'}
+    </div>`;
+
+  el.onclick = (e) => {
+    if (e.target.closest('[data-go-trade]')) {
+      showView('trade');
+      return;
+    }
+    const dayBtn = e.target.closest('[data-day]');
+    if (dayBtn) {
+      const key = dayBtn.dataset.day;
+      const row = ledger.get(key);
+      if (!row) {
+        portfolioDay = null;
+        toast('當日無盈虧紀錄');
+        renderPortfolio();
+        return;
+      }
+      portfolioDay = portfolioDay === key ? null : key;
+      renderPortfolio();
+      openDayPnlSheet(key, row);
+      return;
+    }
+    if (e.target.closest('#calPrev')) {
+      let nm = m - 1; let ny = y;
+      if (nm < 1) { nm = 12; ny -= 1; }
+      portfolioMonth = { y: ny, m: nm };
+      portfolioDay = null;
+      renderPortfolio();
+      return;
+    }
+    if (e.target.closest('#calNext')) {
+      let nm = m + 1; let ny = y;
+      if (nm > 12) { nm = 1; ny += 1; }
+      portfolioMonth = { y: ny, m: nm };
+      portfolioDay = null;
+      renderPortfolio();
+      return;
+    }
+    const rb = e.target.closest('#eqRangeSeg [data-range]');
+    if (rb) {
+      portfolioRange = rb.dataset.range;
+      renderPortfolio();
+      return;
+    }
+    if (e.target.closest('#btnExportStmt')) {
+      const csv = exportDailyStatementCsv(ledger);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'apex-daily-statement.csv';
+      a.click();
+      toast('已匯出日結 CSV');
+    }
+  };
+  $('#pfSymFilter')?.addEventListener('change', (e) => {
+    portfolioFilterSym = e.target.value;
+    renderPortfolio();
+  });
+  $('#pfFrom')?.addEventListener('change', (e) => {
+    portfolioFilterFrom = e.target.value;
+    renderPortfolio();
+  });
+  $('#pfTo')?.addEventListener('change', (e) => {
+    portfolioFilterTo = e.target.value;
+    renderPortfolio();
+  });
+  bindEquityChartTip();
 }
 
 function radarSvg(dims) {
@@ -1295,11 +1843,13 @@ function renderRank() {
     a.click();
   });
   $('#btnStartCh')?.addEventListener('click', () => {
+    if (isReplay()) return toast('請先結束回放再開始排位賽');
     if (state.challenge?.status === 'active') return;
     state.account = createAccount(50000);
     state.closedTrades = [];
     state.equitySamples = [{ t: Date.now(), equity: 50000 }];
     state.challenge = startChallenge();
+    sampleEquity();
     persist();
     toast('排位賽開始');
     showView('trade');
@@ -1323,6 +1873,355 @@ function renderRank() {
 function tierIndexSafe(ladder) {
   const order = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'challenger'];
   return order.indexOf(ladder.tier);
+}
+
+function stopReplayTimer() {
+  if (replayTimer) {
+    clearInterval(replayTimer);
+    replayTimer = null;
+  }
+  if (replaySession) replaySession.playing = false;
+}
+
+function paintReplayChart() {
+  if (!candleSeries || !replaySession) return;
+  const { candles, cursor } = replaySession;
+  const shown = candles.slice(0, Math.max(1, cursor));
+  candleSeries.setData(shown);
+  try { chartApi?.timeScale().scrollToRealTime(); } catch (_) { /* ignore */ }
+}
+
+function applyReplayTickerUi() {
+  const c = currentCandle(replaySession);
+  if (!c) return;
+  const t = synthTicker(replaySession.symbol, c);
+  lastPrices[t.symbol] = t.last;
+  marks[t.symbol] = t.mark;
+  $('#tickerStrip').innerHTML = `<span class="up">${t.last.toFixed(2)}</span>
+    · 回放標記 ${t.mark.toFixed(2)}
+    · ${new Date(c.time * 1000).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`;
+  renderEquity();
+  renderPosTab();
+  updatePreSummary();
+  refreshTicketHead();
+  renderReplayBar();
+}
+
+function showReplayResultCard(result) {
+  const reasonMap = {
+    tp: '止盈觸發', sl: '停損觸發', liquidation: '強平', end: '行情結束', cap: '步數上限',
+  };
+  const el = document.createElement('div');
+  el.className = 'confirm-sheet';
+  el.innerHTML = `<div class="card" role="dialog" aria-modal="true">
+    <h3>回放結果</h3>
+    <div class="replay-result-card">
+      <div>${result.symbol} · ${reasonMap[result.reason] || result.reason}</div>
+      <div>出場價 ${Number(result.exitPrice).toFixed(2)}</div>
+      <div class="${result.pnlUsdt >= 0 ? 'up' : 'down'}">盈虧 ${fmtPnl(result.pnlUsdt)} USDT</div>
+      <div>用時 ${result.durationBars} 根K線</div>
+      <div>最大浮盈 ${fmtPnl(result.maxUpnl)} · 最大浮虧 ${fmtPnl(result.minUpnl)}</div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:8px 0">回放成績只計練習報告，不進排位榜。</p>
+    <div class="side-actions">
+      <button type="button" class="btn ghost" data-a="stay">繼續查看</button>
+      <button type="button" class="btn accent" data-a="exit">結束回放</button>
+    </div></div>`;
+  document.body.appendChild(el);
+  el.onclick = (e) => {
+    const a = e.target.closest('[data-a]')?.dataset.a;
+    if (!a) return;
+    el.remove();
+    if (a === 'exit') exitReplay();
+  };
+}
+
+function handleReplayStepResult(r) {
+  harvestCloses();
+  paintReplayChart();
+  applyReplayTickerUi();
+  for (const ev of r.events || []) {
+    if (ev.type === 'sl' || ev.type === 'tp' || ev.type === 'liquidation') {
+      const label = ev.type === 'liquidation' ? '強平' : ev.type === 'sl' ? '停損觸發' : '止盈觸發';
+      toast(`${label}（回放）`);
+    }
+  }
+  if (r.done) {
+    stopReplayTimer();
+    const finished = replaySession.result
+      || finishResult(replaySession, r.reason, r.hit, r.events).result;
+    state.replayResults = [finished, ...(state.replayResults || [])].slice(0, 40);
+    persistReplayResultsOnly();
+    showReplayResultCard(finished);
+  }
+}
+
+function startReplayTimer() {
+  stopReplayTimer();
+  if (!replaySession) return;
+  replaySession.playing = true;
+  renderReplayBar();
+  replayTimer = setInterval(() => {
+    if (!replaySession?.playing) return;
+    const r = stepReplay(replaySession, 1);
+    handleReplayStepResult(r);
+  }, replayTickMs(replaySession.speed));
+}
+
+function renderReplayBar() {
+  const bar = $('#replayBar');
+  if (!bar) return;
+  if (!isReplay()) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    return;
+  }
+  const p = replayProgress(replaySession);
+  const c = currentCandle(replaySession);
+  const tLabel = c
+    ? new Date(c.time * 1000).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
+    : '—';
+  const hasPos = !!state.account.positions[replaySession.symbol];
+  bar.classList.remove('hidden');
+  bar.innerHTML = `
+    <span><b>回放中</b> · ${replaySession.symbol} · ${replaySession.interval}m</span>
+    <span class="mono">${tLabel}</span>
+    <span class="mono">${p.i + 1}/${p.n}</span>
+    <label>倍速
+      <select id="rpSpeed">
+        ${[1, 2, 5, 10, 30, 60].map((s) =>
+    `<option value="${s}" ${replaySession.speed === s ? 'selected' : ''}>${s}x</option>`).join('')}
+      </select>
+    </label>
+    <div class="replay-actions">
+      <button type="button" class="btn ghost" id="rpStep">下一步</button>
+      <button type="button" class="btn accent" id="rpPlay">${replaySession.playing ? '暫停' : '播放'}</button>
+      <button type="button" class="btn ghost" id="rpToResult" ${hasPos ? '' : 'disabled'} title="需先開倉並設 TP/SL">播放至結果</button>
+      <button type="button" class="btn danger" id="rpExit">結束</button>
+    </div>`;
+  $('#rpSpeed').onchange = (e) => {
+    replaySession.speed = Number(e.target.value) || 1;
+    if (replaySession.playing) startReplayTimer();
+  };
+  $('#rpStep').onclick = () => {
+    stopReplayTimer();
+    handleReplayStepResult(stepReplay(replaySession, 1));
+  };
+  $('#rpPlay').onclick = () => {
+    if (replaySession.playing) stopReplayTimer();
+    else startReplayTimer();
+    renderReplayBar();
+  };
+  $('#rpToResult').onclick = () => {
+    const pos = state.account.positions[replaySession.symbol];
+    if (!pos) return toast('請先開倉');
+    if (pos.tp == null && pos.sl == null) {
+      return toast('請先設定止盈或停損，再播放至結果');
+    }
+    stopReplayTimer();
+    const out = playToResult(replaySession);
+    harvestCloses();
+    paintReplayChart();
+    applyReplayTickerUi();
+    state.replayResults = [out.result, ...(state.replayResults || [])].slice(0, 40);
+    persistReplayResultsOnly();
+    showReplayResultCard(out.result);
+  };
+  $('#rpExit').onclick = () => exitReplay();
+}
+
+async function enterReplay({ symbol, interval, startMs, endMs }) {
+  if (isReplay()) return toast('已在回放中');
+  if (state.challenge?.status === 'active' && challengeRemaining(state.challenge) > 0) {
+    const ok = await confirmTradeAction({
+      title: '進行中的排位賽',
+      body: '進入回放不會影響排位倉位（會暫存即時帳戶）。確定繼續？',
+      confirmLabel: '進入回放',
+    });
+    if (!ok) return;
+  }
+  replayLoadPct = 0;
+  toast('正在載入歷史 K 線…');
+  let fetched;
+  try {
+    fetched = await fetchKlinesRange(symbol, interval, startMs, endMs, {
+      maxBars: 20000,
+      onProgress: ({ bars }) => { replayLoadPct = bars; },
+    });
+  } catch (e) {
+    return toast('歷史 K 線載入失敗：' + (e.message || e));
+  }
+  if (!fetched.candles.length) return toast('該區間沒有 K 線資料');
+
+  liveBackup = {
+    account: state.account,
+    closedTrades: state.closedTrades,
+    equitySamples: state.equitySamples,
+  };
+  market.destroy();
+  state.account = createAccount(state.settings.startBalance);
+  state.closedTrades = [];
+  state.equitySamples = [];
+  marks = {};
+  lastPrices = {};
+
+  replaySession = createReplaySession({
+    symbol,
+    interval,
+    candles: fetched.candles,
+    account: state.account,
+    startBalance: state.settings.startBalance,
+    fees: fees(),
+  });
+  replaySession.source = fetched.source;
+  replaySession.cursor = Math.min(20, fetched.candles.length - 1);
+
+  state.ui.symbol = symbol;
+  state.ui.interval = interval;
+  $('#connPill').textContent = '回放';
+  $('#connPill').className = 'pill warn';
+  $('#srcPill').textContent = fetched.source + ' · 歷史';
+  $('#demoPill').textContent = '回放練習 · 非真實交易';
+
+  paintReplayChart();
+  applyReplayTickerUi();
+  renderSymbols();
+  renderIntervals();
+  sampleEquity();
+  showView('trade');
+  toast(`回放就緒：${fetched.candles.length} 根（${fetched.source}）· 請下單並設 TP/SL`);
+}
+
+async function exitReplay() {
+  if (!isReplay()) return;
+  stopReplayTimer();
+  replaySession.active = false;
+  replaySession = null;
+  if (liveBackup) {
+    state.account = liveBackup.account;
+    state.closedTrades = liveBackup.closedTrades;
+    state.equitySamples = liveBackup.equitySamples;
+    liveBackup = null;
+  }
+  marks = {};
+  lastPrices = {};
+  renderReplayBar();
+  $('#demoPill').textContent = '模擬資金 · 非真實交易';
+  try {
+    await market.start();
+    $('#srcPill').textContent = market.getSource();
+    updateConn(market.getConn());
+    await market.setSymbol(state.ui.symbol || 'BTCUSDT');
+    market.setIntervalKey(state.ui.interval || '5');
+    refreshKlines();
+    loadHourly();
+  } catch (_) {
+    toast('恢復即時行情失敗，請重新整理');
+  }
+  renderSymbols();
+  renderIntervals();
+  renderEquity();
+  renderPosTab();
+  persist();
+  toast('已結束回放，恢復即時練習帳戶');
+}
+
+function defaultReplayStartIso(daysBack) {
+  const d = new Date(Date.now() - daysBack * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+
+function renderReplay() {
+  const el = $('#view-replay');
+  const results = state.replayResults || [];
+  const loading = replayLoadPct > 0 && !isReplay() ? `<p class="muted">已載入約 ${replayLoadPct} 根…</p>` : '';
+  const active = isReplay()
+    ? `<div class="panel-block">
+        <h3>回放進行中</h3>
+        <p>${replaySession.symbol} · 已播放 ${replayProgress(replaySession).i + 1}/${replayProgress(replaySession).n}</p>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn accent" id="rpGoTrade" style="width:auto">前往交易台操作</button>
+          <button type="button" class="btn danger" id="rpEndFromPage" style="width:auto">結束回放</button>
+        </div>
+      </div>`
+    : '';
+  el.innerHTML = `<div class="page-head"><h1>歷史回放</h1>
+    <p>用真實歷史 K 線重練：下單、設止盈停損，播放驗證會否打到目標。回放撮合簡化（合成盤口＋K 線高低觸價），不進排位榜。</p></div>
+    ${active}
+    <div class="panel-block">
+      <h3>開始新回放</h3>
+      ${loading}
+      <div class="replay-setup-grid">
+        <label class="field">合約
+          <select id="rpSym">${listSymbols().map((s) =>
+    `<option value="${s}" ${s === (state.ui.symbol || 'BTCUSDT') ? 'selected' : ''}>${s}</option>`).join('')}</select>
+        </label>
+        <label class="field">K 線週期
+          <select id="rpIv">
+            <option value="5">5 分鐘</option>
+            <option value="15">15 分鐘</option>
+            <option value="60">1 小時</option>
+          </select>
+        </label>
+        <label class="field">起始日
+          <input type="date" id="rpStart" value="${defaultReplayStartIso(7)}" />
+        </label>
+        <label class="field">結束日
+          <input type="date" id="rpEnd" value="${defaultReplayStartIso(0)}" />
+        </label>
+      </div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin:10px 0">
+        <button type="button" class="btn ghost" data-preset="7" style="width:auto">近 7 日</button>
+        <button type="button" class="btn ghost" data-preset="30" style="width:auto">近 30 日</button>
+        <button type="button" class="btn ghost" data-preset="365" style="width:auto">近一年</button>
+      </div>
+      <p class="muted" style="font-size:11px;line-height:1.5;margin-bottom:8px">
+        近一年 5m 資料量較大（最多約 2 萬根），載入需數十秒。建議先用 7／30 日練習。
+      </p>
+      <button type="button" class="btn accent" id="rpStartBtn" ${isReplay() ? 'disabled' : ''}>載入並開始回放</button>
+    </div>
+    <div class="panel-block">
+      <h3>回放成績（本機）</h3>
+      ${results.length ? `<table class="pos-table"><thead><tr>
+        <th>時間</th><th>合約</th><th>結果</th><th>盈虧</th><th>K線數</th>
+      </tr></thead><tbody>${results.slice(0, 20).map((r) => {
+    const reasonLab = {
+      tp: '止盈', sl: '停損', liquidation: '強平', end: '行情結束', cap: '步數上限',
+    }[r.reason] || r.reason;
+    return `<tr>
+        <td>${new Date(r.ts).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
+        <td>${r.symbol}</td>
+        <td>${reasonLab}</td>
+        <td class="${r.pnlUsdt >= 0 ? 'up' : 'down'}">${fmtPnl(r.pnlUsdt)}</td>
+        <td>${r.durationBars}</td>
+      </tr>`;
+  }).join('')}</tbody></table>`
+    : '<p class="empty-hint">尚無回放成績。完成「播放至結果」後會顯示於此。</p>'}
+    </div>`;
+
+  el.querySelectorAll('[data-preset]').forEach((b) => {
+    b.onclick = () => {
+      const days = Number(b.dataset.preset);
+      $('#rpStart').value = defaultReplayStartIso(days);
+      $('#rpEnd').value = defaultReplayStartIso(0);
+    };
+  });
+  $('#rpGoTrade')?.addEventListener('click', () => showView('trade'));
+  $('#rpEndFromPage')?.addEventListener('click', () => exitReplay());
+  $('#rpStartBtn')?.addEventListener('click', async () => {
+    const symbol = $('#rpSym').value;
+    const interval = $('#rpIv').value;
+    const startVal = $('#rpStart').value;
+    const endVal = $('#rpEnd').value;
+    if (!startVal || !endVal) return toast('請選擇起始／結束日');
+    const startMs = new Date(startVal + 'T00:00:00+08:00').getTime();
+    const endMs = Math.min(Date.now(), new Date(endVal + 'T23:59:59+08:00').getTime());
+    if (!(endMs > startMs)) return toast('結束日須晚於起始日');
+    $('#rpStartBtn').disabled = true;
+    $('#rpStartBtn').textContent = '載入中…';
+    await enterReplay({ symbol, interval, startMs, endMs });
+    renderReplay();
+  });
 }
 
 function renderSettings() {
@@ -1357,13 +2256,12 @@ function renderSettings() {
       </div>
     </div>
     <div class="panel-block">
-      <h3>歷史回放（規劃中）</h3>
-      <p style="color:var(--muted);font-size:12px;line-height:1.55">
-        下一階段會支援：選起始日（例如一年前）→ 用真實歷史 K 線重播 →
-        下單並設止盈／停損 →「播放至結果」自動推進，直到觸及目標或停損。
-        回放只計練習報告，不進排位榜。詳見
-        <span class="mono">ROADMAP-REPLAY-DRIVE.md</span>。
+      <h3>歷史回放</h3>
+      <p style="color:var(--muted);font-size:12px;line-height:1.55;margin-bottom:8px">
+        已可用：底欄「回放」選起始日 → 載入真實歷史 K 線 → 於交易台下單並設止盈／停損 →
+        「播放至結果」。回放撮合簡化（合成盤口），成績不進排位榜。
       </p>
+      <button type="button" class="btn accent" id="btnGoReplay" style="width:auto">前往回放</button>
     </div>
     <div class="panel-block">
       <label class="field">Maker 費率 <input id="setMaker" type="number" step="0.0001" value="${s.makerFee}" /></label>
@@ -1433,6 +2331,7 @@ function renderSettings() {
     drive.disconnect();
     renderSettings();
   };
+  $('#btnGoReplay').onclick = () => showView('replay');
   $('#btnTopUp').onclick = () => {
     if (chActive && !state.challenge.allowTopUp) return toast('排位賽期間禁止補倉');
     const amt = Number($('#topUpAmt').value);
@@ -1487,8 +2386,9 @@ function renderSettings() {
     if ($('#resetConfirm').value !== 'RESET') return toast('請輸入 RESET');
     state.account = resetAccount(state.settings.startBalance);
     state.closedTrades = [];
-    state.equitySamples = [];
+    state.equitySamples = [{ t: Date.now(), equity: state.settings.startBalance }];
     state.challenge = null;
+    sampleEquity();
     persist();
     renderEquity();
     renderPosTab();
@@ -1523,14 +2423,16 @@ function syncOrdTypeUi() {
   $$('#ordTypeSeg button').forEach((x) => x.classList.toggle('active', x.dataset.type === ordType));
   const showLimitPx = ordType === 'limit' || ordType === 'stop_limit';
   const showTrig = ordType === 'stop_market' || ordType === 'stop_limit';
+  const showTrail = ordType === 'stop_trail';
   $$('.limit-only').forEach((x) => x.classList.toggle('hidden', !showLimitPx));
   const tifField = $('#tif')?.closest('label, .field');
   if (tifField) tifField.classList.toggle('hidden', ordType !== 'limit');
   $$('.cond-only').forEach((x) => x.classList.toggle('hidden', !showTrig));
+  $$('.trail-only').forEach((x) => x.classList.toggle('hidden', !showTrail));
 }
 
 function applyRoiHelper(kind, pct) {
-  const t = market.getTicker();
+  const t = activeTicker();
   if (!t) return toast('行情尚未就緒');
   const px = t.last;
   const side = submitSide;
@@ -1561,9 +2463,14 @@ function wireUi() {
     state.ui.levBySymbol[market.getSymbol()] = levEffective();
     updatePreSummary();
   };
-  $('#levBadge')?.addEventListener('click', () => {
-    const next = Number(window.prompt('設定槓桿（1–50）', String(levEffective())));
-    if (!(next >= 1 && next <= 50)) return;
+  $('#levBadge')?.addEventListener('click', async () => {
+    const vals = await formSheet({
+      title: '設定槓桿',
+      fields: [{ id: 'lev', label: '槓桿 1–50（最高 50x）', value: String(levEffective()), type: 'number' }],
+    });
+    if (!vals) return;
+    const next = Number(vals.lev);
+    if (!(next >= 1 && next <= 50)) return toast('槓桿無效');
     $('#leverage').value = String(next);
     $('#leverage').dispatchEvent(new Event('input'));
   });
@@ -1667,6 +2574,19 @@ function wireUi() {
   refreshRankPill();
   $('#levVal').textContent = levEffective() + 'x';
 
+  if (!state.equitySamples?.length && state.account) {
+    state.equitySamples = [{ t: Date.now(), equity: state.settings.startBalance }];
+  }
+  // Hourly equity snapshot so calendar day boundaries stay honest.
+  setInterval(() => {
+    const now = Date.now();
+    if (now - lastHourlySample < 55 * 60 * 1000) return;
+    lastHourlySample = now;
+    if (state.ui.entered) {
+      sampleEquity();
+      persist();
+    }
+  }, 60_000);
   if (loaded.recovered) toast('已從備份或預設資料恢復');
   if (state.ui.entered) enterApp();
   drive.boot();

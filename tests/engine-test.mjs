@@ -162,4 +162,20 @@ assert.equal(r.ok, true);
 assert.equal(amendOrder(acc, r.order.id, { triggerPrice: 91, qty: 0.02 }).ok, true);
 assert.equal(acc.orders.find((o) => o.id === r.order.id).triggerPrice, 91);
 
+// Trailing stop (long reduce): trails peak up, fills on 1% pullback
+acc = createAccount(50000);
+placeOrder(acc, {
+  symbol: 'BTCUSDT', side: 'long', ordType: 'market', qty: 0.01, leverage: 5,
+}, { book, marks: { BTCUSDT: 100 }, fees });
+r = placeOrder(acc, {
+  symbol: 'BTCUSDT', side: 'short', ordType: 'stop_trail', qty: 0.01,
+  leverage: 5, trailPct: 1, reduceOnly: true,
+}, { book, marks: { BTCUSDT: 100 }, fees });
+assert.equal(r.ok, true);
+maybeFillLimits(acc, { lastBySymbol: { BTCUSDT: 110 }, marks: { BTCUSDT: 110 } }, fees);
+assert.equal(acc.orders.find((o) => o.ordType === 'stop_trail')?.status, 'open');
+assert.ok(acc.orders.find((o) => o.ordType === 'stop_trail').peak >= 110);
+maybeFillLimits(acc, { lastBySymbol: { BTCUSDT: 108.8 }, marks: { BTCUSDT: 108.8 } }, fees);
+assert.equal(acc.positions.BTCUSDT, undefined);
+
 console.log('engine-test OK');
