@@ -1,7 +1,9 @@
 import { createMarket, listSymbols, symbolMeta } from './lib/market.js';
 import {
-  createAccount, placeOrder, cancelOrder, maybeFillLimits, onMarkUpdate,
-  settleFunding, accountSnapshot, liqPrice, resetAccount, topUp,
+  createAccount, placeOrder, cancelOrder, cancelAllOrders, amendOrder,
+  maybeFillLimits, onMarkUpdate, settleFunding, accountSnapshot, liqPrice,
+  resetAccount, topUp, updatePositionBrackets, adjustIsolatedMargin,
+  setPositionLeverage,
 } from './lib/engine.js';
 import { loadState, saveState, exportState, importState } from './lib/store.js';
 import {
@@ -15,6 +17,7 @@ import {
 import {
   formatRank, nextRankHint, displayTier, TIER_LABEL,
 } from './lib/ladder.js';
+import { createDriveClient, DRIVE_FILE } from './lib/drive.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -42,6 +45,13 @@ let submitSide = 'long';
 let coachStep = 0;
 let rankSort = 'score';
 let lastLiqWarnAt = 0;
+let driveSyncStatus = 'disconnected';
+let lastOffSymbolPoll = 0;
+const FILL_TYPE = {
+  liquidation: '強平', funding: '資金費', sl: '停損', tp: '止盈',
+  stop: '條件', taker: '吃單', maker: '掛單', limit: '限價', close: '平倉', open: '開倉',
+};
+const FILL_SIDE = { buy: '買', sell: '賣', long: '多', short: '空', funding: '資金費' };
 
 function toast(msg) {
   const el = $('#toast');
@@ -51,14 +61,126 @@ function toast(msg) {
   toast._t = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+const drive = createDriveClient({
+  getState: () => state,
+  setState: (next) => { state = next; },
+  saveLocal: () => {
+    try { saveState(state); } catch (e) { console.warn(e); }
+  },
+  onStatus: (s) => {
+    driveSyncStatus = s;
+    const pill = $('#drivePill');
+    if (pill) pill.textContent = '雲端 · ' + drive.statusLabel(s);
+  },
+  toast,
+});
+
 function persist() {
   try {
+    state.syncUpdatedAt = Date.now();
     const r = saveState(state);
     if (!r.ok && r.reason === 'quota') toast('儲存空間不足');
     else if (!r.ok) console.warn('saveState', r.reason);
+    else drive.scheduleUpload();
   } catch (e) {
     console.warn('persist failed', e);
   }
+}
+
+// Book for the active symbol, or a deep synthetic book for off-symbol close.
+function bookFor(sym) {
+  if (sym === market.getSymbol()) return market.getBook();
+  const px = marks[sym] ?? lastPrices[sym];
+  if (!(px > 0)) return null;
+  return {
+    asks: [[px * 1.00005, 1e9]],
+    bids: [[px * 0.99995, 1e9]],
+    ts: Date.now(),
+  };
+}
+
+function markFor(sym) {
+  if (marks[sym] != null) return marks[sym];
+  if (lastPrices[sym] != null) return lastPrices[sym];
+  const t = market.getTicker();
+  if (t && market.getSymbol() === sym) return t.markApprox ? t.last : t.mark;
+  return null;
+}
+
+function confirmTradeAction({ title, body, confirmLabel = '確認', danger = false }) {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.className = 'confirm-sheet';
+    el.innerHTML = `<div class="card" role="dialog" aria-modal="true">
+      <h3>${title}</h3>
+      <p class="confirm-body">${body}</p>
+      <div class="side-actions">
+        <button type="button" class="btn ghost" data-a="cancel">取消</button>
+        <button type="button" class="btn ${danger ? 'danger' : 'accent'}" data-a="ok">${confirmLabel}</button>
+      </div></div>`;
+    document.body.appendChild(el);
+    el.onclick = (e) => {
+      const a = e.target.closest('[data-a]')?.dataset.a;
+      if (!a) return;
+      el.remove();
+      resolve(a === 'ok');
+    };
+  });
+}
+
+async function selectSymbol(sym) {
+  if (!sym || sym === market.getSymbol()) return;
+  // remember leverage for current symbol
+  if (!state.ui.levBySymbol) state.ui.levBySymbol = {};
+  state.ui.levBySymbol[market.getSymbol()] = levEffective();
+  state.ui.symbol = sym;
+  persist();
+  await market.setSymbol(sym);
+  const saved = state.ui.levBySymbol[sym]
+    || state.account.positions[sym]?.leverage
+    || Number($('#leverage').value);
+  $('#leverage').value = String(saved);
+  $('#leverage').dispatchEvent(new Event('input'));
+  renderSymbols();
+  refreshTicketHead();
+  refreshKlines();
+  loadHourly();
+  updatePreSummary();
+}
+
+function refreshTicketHead() {
+  const el = $('#ticketSym');
+  if (el) el.textContent = `${market.getSymbol()} 永續 · 逐倉 · 單向`;
+}
+
+async function pollOffSymbolRisk() {
+  const now = Date.now();
+  if (now - lastOffSymbolPoll < 4000) return;
+  lastOffSymbolPoll = now;
+  const active = market.getSymbol();
+  const needed = new Set([
+    ...Object.keys(state.account.positions || {}),
+    ...state.account.orders.filter((o) => o.status === 'open').map((o) => o.symbol),
+  ]);
+  needed.delete(active);
+  for (const sym of needed) {
+    try {
+      const t = await market.fetchTicker(sym);
+      lastPrices[sym] = t.last;
+      marks[sym] = t.markApprox ? null : t.mark;
+      if (!t.markApprox && t.mark != null) {
+        const riskEvs = onMarkUpdate(state.account, sym, t.mark, fees());
+        for (const ev of riskEvs) {
+          const label = ev.type === 'liquidation' ? '強平' : ev.type === 'sl' ? '停損觸發' : '止盈觸發';
+          toast(`${label} ${sym}`);
+        }
+      }
+      if (t.fundingRate != null) {
+        settleFunding(state.account, sym, t.markApprox ? t.last : t.mark, t.fundingRate, now, t.nextFundingTime);
+      }
+    } catch (_) { /* optional */ }
+  }
+  harvestCloses();
 }
 
 function fees() {
@@ -291,15 +413,20 @@ function updateTicker(t) {
   const ch = t.change24h;
   const cls = ch >= 0 ? 'up' : 'down';
   $('#tickerStrip').innerHTML = `<span class="${cls} flash">${last?.toFixed(2)}</span>
-    · mark ${t.markApprox ? '≈' : ''}${Number(t.mark).toFixed(2)}
+    · 標記 ${t.markApprox ? '≈' : ''}${Number(t.mark).toFixed(2)}
     · 24h <span class="${cls}">${ch?.toFixed(2)}%</span>
-    · fund ${(Number(t.fundingRate || 0) * 100).toFixed(4)}%`;
-  maybeFillLimits(state.account, { last, mark: t.markApprox ? null : t.mark }, fees());
-  if (!t.markApprox) {
-    const riskEvs = onMarkUpdate(state.account, t.symbol, t.mark, fees());
+    · 資金費率 ${(Number(t.fundingRate || 0) * 100).toFixed(4)}%`;
+  maybeFillLimits(state.account, {
+    lastBySymbol: { ...lastPrices },
+    marks: { ...displayMarks() },
+  }, fees());
+  // Risk for every known mark (active + cached off-symbol).
+  for (const [sym, mk] of Object.entries(marks)) {
+    if (mk == null) continue;
+    const riskEvs = onMarkUpdate(state.account, sym, mk, fees());
     for (const ev of riskEvs) {
       const label = ev.type === 'liquidation' ? '強平' : ev.type === 'sl' ? '停損觸發' : '止盈觸發';
-      toast(`${label} ${t.symbol}`);
+      toast(`${label} ${sym}`);
     }
   }
   maybeAutoSettleChallenge();
@@ -308,10 +435,12 @@ function updateTicker(t) {
   );
   harvestCloses();
   checkFunding(t);
+  pollOffSymbolRisk();
   renderEquity();
   renderPosTab();
   updatePreSummary();
   warnLiqProximity();
+  refreshTicketHead();
   // live candle last
   if (candleSeries && last) {
     try {
@@ -370,35 +499,62 @@ function levEffective() {
 
 function updatePreSummary() {
   const t = market.getTicker();
-  const qty = Number($('#qty').value) || 0;
+  const rawQty = Number($('#qty').value) || 0;
   const lev = levEffective();
-  const px = ordType === 'limit' ? Number($('#limitPrice').value) || t?.last : t?.last;
+  const px = (ordType === 'limit' || ordType === 'stop_limit')
+    ? Number($('#limitPrice').value) || t?.last
+    : t?.last;
   const el = $('#preSummary');
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const reduce = $('#reduceOnly')?.checked;
-  let canSubmit = qty > 0 && !!t && !!px && !challengeBlocksTrading();
-  if (!t || !(qty > 0) || !px) {
+  const pos = state.account.positions[market.getSymbol()];
+  const meta = t ? symbolMeta(market.getSymbol()) : null;
+  let coinQty = rawQty;
+  if (state.ui.qtyUnit === 'usdt' && px > 0 && meta) {
+    coinQty = Math.floor((rawQty / px) / meta.lot) * meta.lot;
+  }
+  let canSubmit = coinQty > 0 && !!t && !!px && !challengeBlocksTrading();
+  if ((ordType === 'stop_market' || ordType === 'stop_limit')
+    && !(Number($('#triggerPrice').value) > 0)) canSubmit = false;
+  if (ordType === 'stop_limit' && !(Number($('#limitPrice').value) > 0)) canSubmit = false;
+  if (!t || !(rawQty > 0) || !px) {
     el.textContent = challengeBlocksTrading()
       ? '排位賽已結束，請到「段位」頁結算'
       : '輸入數量以預覽保證金／強平';
     canSubmit = false;
   } else {
-    const notional = qty * px;
+    const maxQty = Math.floor(((snap.available * lev) / px) / meta.lot) * meta.lot;
+    const maxUsdt = maxQty * px;
+    const notional = state.ui.qtyUnit === 'usdt' ? rawQty : coinQty * px;
     const im = notional / lev;
     const fee = notional * fees().taker;
-    const meta = symbolMeta(market.getSymbol());
     const longLiq = liqPrice({ side: 'long', entry: px, leverage: lev, mmr: meta.mmr, feeRate: fees().taker });
     const shortLiq = liqPrice({ side: 'short', entry: px, leverage: lev, mmr: meta.mmr, feeRate: fees().taker });
     const mark = t.markApprox ? t.last : t.mark;
-    el.innerHTML = `名義價值 $${notional.toFixed(2)} · 保證金約 $${im.toFixed(2)} · 預估手續費 $${fee.toFixed(4)}<br>
+    const maxLab = state.ui.qtyUnit === 'usdt'
+      ? `可開約 $${maxUsdt.toFixed(2)}`
+      : `可開多／空約 ${maxQty > 0 ? maxQty : 0}`;
+    el.innerHTML = `可用 ${snap.available.toFixed(2)} USDT · ${maxLab}<br>
+    訂單價值 $${notional.toFixed(2)} · 幣數量 ${coinQty || 0} · 保證金 $${im.toFixed(2)} · 手續費 $${fee.toFixed(4)}<br>
     預估強平 多 ${longLiq.toFixed(2)} (${((mark - longLiq) / mark * 100).toFixed(2)}%) ·
-    空 ${shortLiq.toFixed(2)} (${((shortLiq - mark) / mark * 100).toFixed(2)}%)`;
+    空 ${shortLiq.toFixed(2)} (${((shortLiq - mark) / mark * 100).toFixed(2)}%)`
+      + (reduce ? '<br><span class="down">只減倉：必須反向平倉</span>' : '');
     if (!reduce && snap.available < im + fee) canSubmit = false;
+    if (reduce) {
+      if (!pos) canSubmit = false;
+      else if (coinQty > pos.qty + 1e-12) canSubmit = false;
+    }
   }
   const longBtn = $('#btnLong');
   const shortBtn = $('#btnShort');
-  if (longBtn) longBtn.disabled = !canSubmit;
-  if (shortBtn) shortBtn.disabled = !canSubmit;
+  if (longBtn) {
+    longBtn.disabled = !canSubmit || (reduce && pos && pos.side === 'long');
+    longBtn.textContent = reduce ? '平空／減倉' : '做多';
+  }
+  if (shortBtn) {
+    shortBtn.disabled = !canSubmit || (reduce && pos && pos.side === 'short');
+    shortBtn.textContent = reduce ? '平多／減倉' : '做空';
+  }
 }
 
 function warnLiqProximity() {
@@ -406,6 +562,7 @@ function warnLiqProximity() {
   const now = Date.now();
   if (now - lastLiqWarnAt < 15000) return;
   for (const p of snap.positions) {
+    if (marks[p.symbol] == null) continue; // degraded: no false alarm
     if (p.distToLiq < 0.03) {
       lastLiqWarnAt = now;
       toast(`危急：${p.symbol} 距離強平 ${(p.distToLiq * 100).toFixed(2)}%`);
@@ -433,7 +590,12 @@ function setQtyFromPct(pct) {
   if (pct === 100 && qty * px / lev > snap.available) {
     qty = Math.floor((snap.available * lev / px) / meta.lot) * meta.lot;
   }
-  $('#qty').value = qty > 0 ? String(Number(qty.toFixed(8))) : '';
+  if (state.ui.qtyUnit === 'usdt') {
+    const notion = qty * px;
+    $('#qty').value = notion > 0 ? String(Number(notion.toFixed(2))) : '';
+  } else {
+    $('#qty').value = qty > 0 ? String(Number(qty.toFixed(8))) : '';
+  }
   if (pct === 100) toast('使用 100% 保證金風險極高');
   updatePreSummary();
 }
@@ -450,55 +612,262 @@ function renderEquity() {
 function renderPosTab() {
   const body = $('#posTabBody');
   const snap = accountSnapshot(state.account, displayMarks(), fees());
+  body.onclick = null;
+  const closeAllBtn = $('#btnCloseAll');
+  const cancelAllBtn = $('#btnCancelAll');
+  if (closeAllBtn) closeAllBtn.classList.toggle('hidden', !snap.positions.length);
+  if (cancelAllBtn) cancelAllBtn.classList.toggle('hidden', !snap.openOrders.length);
+
   if (posTab === 'positions') {
     if (!snap.positions.length) {
-      body.innerHTML = '<p style="color:var(--muted)">目前沒有倉位</p>';
+      body.innerHTML = '<p class="empty-hint">尚無持倉 · 使用右側下單區開倉，或手機點「下單」</p>';
       return;
     }
-    body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>標記</th><th>盈虧</th><th>強平</th><th>距離強平</th></tr></thead><tbody>`
+    body.innerHTML = `<table class="pos-table pos-table--cards"><thead><tr>
+      <th>合約</th><th>方向</th><th>數量</th><th>槓桿</th><th>價值</th><th>保證金</th>
+      <th>入場</th><th>標記</th><th>盈虧</th><th>報酬率</th>
+      <th>止盈</th><th>停損</th><th>強平</th><th>距離強平</th><th>操作</th>
+      </tr></thead><tbody>`
       + snap.positions.map((p) => {
-        const band = p.distToLiq < 0.03 ? 'crit' : p.distToLiq < 0.08 ? 'warn' : '';
-        const bandTxt = band === 'crit' ? '危急 ' : band === 'warn' ? '警告 ' : '';
+        const engMark = marks[p.symbol];
+        const degraded = engMark == null;
+        const band = degraded ? '' : (p.distToLiq < 0.03 ? 'crit' : p.distToLiq < 0.08 ? 'warn' : '');
+        const bandTxt = degraded ? '標記降級 ' : band === 'crit' ? '危急 ' : band === 'warn' ? '警告 ' : '';
         const pnlCls = p.upnl >= 0 ? 'up' : 'down';
-        return `<tr class="liq-${band}"><td>${p.symbol}</td><td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? '多' : '空'}</td>
-        <td>${p.qty}</td><td>${p.entry.toFixed(2)}</td><td>${p.mark?.toFixed?.(2) ?? '—'}</td>
-        <td class="${pnlCls}">${p.upnl >= 0 ? '+' : ''}${p.upnl.toFixed(2)}</td>
-        <td>${p.liqPrice.toFixed(2)}</td><td>${bandTxt}${(p.distToLiq * 100).toFixed(2)}%</td></tr>`;
+        const tpTxt = p.tp != null ? Number(p.tp).toFixed(2) : '—';
+        const slTxt = p.sl != null ? Number(p.sl).toFixed(2) : '—';
+        const markTxt = degraded
+          ? `≈${(lastPrices[p.symbol] ?? p.mark)?.toFixed?.(2) ?? '—'}`
+          : (p.mark?.toFixed?.(2) ?? '—');
+        return `<tr class="liq-${band}" data-sym="${p.symbol}">
+        <td class="pos-sym" data-label="合約">${p.symbol}</td>
+        <td class="${p.side === 'long' ? 'up' : 'down'}" data-label="方向">${p.side === 'long' ? '多' : '空'}</td>
+        <td data-label="數量">${p.qty}</td>
+        <td data-label="槓桿">${Number(p.leverage).toFixed(0)}x</td>
+        <td data-label="價值">${p.notional.toFixed(2)}</td>
+        <td data-label="保證金">${p.im.toFixed(2)}</td>
+        <td data-label="入場">${p.entry.toFixed(2)}</td>
+        <td data-label="標記">${markTxt}</td>
+        <td class="${pnlCls}" data-label="盈虧">${p.upnl >= 0 ? '+' : ''}${p.upnl.toFixed(2)}</td>
+        <td class="${pnlCls}" data-label="報酬率">${p.roiPct >= 0 ? '+' : ''}${p.roiPct.toFixed(2)}%</td>
+        <td class="up" data-label="止盈">${tpTxt}</td><td class="down" data-label="停損">${slTxt}</td>
+        <td data-label="強平">${degraded ? '—' : p.liqPrice.toFixed(2)}</td>
+        <td class="liq-dist" data-label="距離強平">${degraded ? '強平/TP/SL 暫停' : bandTxt + (p.distToLiq * 100).toFixed(2) + '%'}</td>
+        <td class="pos-actions" data-label="操作">
+          <button type="button" class="btn-row close" data-close="${p.symbol}" data-pct="100">平倉</button>
+          <button type="button" class="btn-row close" data-close="${p.symbol}" data-pct="50">平50%</button>
+          <button type="button" class="btn-row close" data-close="${p.symbol}" data-pct="25">平25%</button>
+          <button type="button" class="btn-row flip" data-flip="${p.symbol}">反手</button>
+          <div class="pos-more">
+            <button type="button" class="btn-row" data-more="${p.symbol}">⋯</button>
+            <div class="pos-more-menu">
+              <button type="button" class="btn-row" data-edit-tpsl="${p.symbol}">改TP/SL</button>
+              <button type="button" class="btn-row" data-add-margin="${p.symbol}">調保證金</button>
+              <button type="button" class="btn-row" data-adj-lev="${p.symbol}">調槓桿</button>
+            </div>
+          </div>
+        </td></tr>`;
       }).join('') + '</tbody></table>';
+    body.onclick = async (e) => {
+      const moreBtn = e.target.closest('[data-more]');
+      if (moreBtn) {
+        e.stopPropagation();
+        const wrap = moreBtn.closest('.pos-more');
+        $$('.pos-more.open').forEach((x) => { if (x !== wrap) x.classList.remove('open'); });
+        wrap.classList.toggle('open');
+        return;
+      }
+      const act = e.target.closest('[data-close],[data-flip],[data-edit-tpsl],[data-add-margin],[data-adj-lev],tr[data-sym]');
+      if (!act) return;
+      if (act.dataset.close) {
+        e.stopPropagation();
+        closePosition(act.dataset.close, { pct: Number(act.dataset.pct) || 100 });
+        return;
+      }
+      if (act.dataset.flip) {
+        e.stopPropagation();
+        reversePosition(act.dataset.flip);
+        return;
+      }
+      if (act.dataset.editTpsl) {
+        e.stopPropagation();
+        editTpSl(act.dataset.editTpsl);
+        return;
+      }
+      if (act.dataset.addMargin) {
+        e.stopPropagation();
+        addMarginPrompt(act.dataset.addMargin);
+        return;
+      }
+      if (act.dataset.adjLev) {
+        e.stopPropagation();
+        adjLevPrompt(act.dataset.adjLev);
+        return;
+      }
+      if (act.dataset.sym && !e.target.closest('button')) {
+        await selectSymbol(act.dataset.sym);
+      }
+    };
   } else if (posTab === 'orders') {
     const rows = snap.openOrders;
     if (!rows.length) {
-      body.innerHTML = '<p style="color:var(--muted)">目前沒有掛單</p>';
+      body.innerHTML = '<p class="empty-hint">尚無當前委託 · 切換「限價」或「條件」後送出</p>';
       return;
     }
-    body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>價</th><th>量</th><th></th></tr></thead><tbody>`
-      + rows.map((o) => `<tr><td>${o.symbol}</td><td>${o.side}</td><td>${o.price}</td><td>${o.qty}</td>
-        <td><button type="button" data-cancel="${o.id}">取消</button></td></tr>`).join('')
+    body.innerHTML = `<table class="pos-table"><thead><tr>
+      <th>時間</th><th>合約</th><th>類型</th><th>方向</th><th>價／觸發</th><th>量</th><th>TIF</th><th>只減倉</th><th>操作</th>
+      </tr></thead><tbody>`
+      + rows.map((o) => {
+        const typeLab = o.ordType === 'stop_market' ? '條件市價'
+          : o.ordType === 'stop_limit' ? '條件限價' : '限價';
+        const px = o.ordType === 'stop_market' ? `觸發 ${o.triggerPrice}`
+          : o.ordType === 'stop_limit' ? `觸發 ${o.triggerPrice} / 限 ${o.price}` : o.price;
+        const canAmend = o.ordType === 'limit' || o.ordType === 'stop_market' || o.ordType === 'stop_limit';
+        return `<tr>
+        <td>${new Date(o.createdAt).toLocaleTimeString()}</td>
+        <td>${o.symbol}</td><td>${typeLab}</td>
+        <td class="${o.side === 'long' ? 'up' : 'down'}">${o.side === 'long' ? '買入' : '賣出'}</td>
+        <td>${px}</td><td>${o.qty}</td>
+        <td>${o.tif || 'GTC'}</td>
+        <td>${o.reduceOnly ? '是' : '—'}</td>
+        <td class="pos-actions">
+          ${canAmend ? `<button type="button" class="btn-row" data-amend="${o.id}">修改</button>` : ''}
+          <button type="button" class="btn-row cancel" data-cancel="${o.id}">取消</button>
+        </td></tr>`;
+      }).join('')
       + '</tbody></table>';
     body.onclick = (e) => {
-      const b = e.target.closest('[data-cancel]');
-      if (!b) return;
-      cancelOrder(state.account, b.dataset.cancel);
-      persist();
-      renderPosTab();
+      const cancel = e.target.closest('[data-cancel]');
+      if (cancel) {
+        cancelOrder(state.account, cancel.dataset.cancel);
+        persist();
+        renderPosTab();
+        toast('已取消委託');
+        return;
+      }
+      const amend = e.target.closest('[data-amend]');
+      if (amend) amendOrderPrompt(amend.dataset.amend);
     };
+  } else if (posTab === 'closed') {
+    const rows = [...(state.closedTrades || [])].reverse().slice(0, 100);
+    body.innerHTML = rows.length
+      ? `<table class="pos-table"><thead><tr>
+        <th>平倉時間</th><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>出場</th>
+        <th>已實現盈虧</th><th>費用</th><th>原因</th>
+        </tr></thead><tbody>`
+        + rows.map((t) => {
+          const cls = t.pnlUsdt >= 0 ? 'up' : 'down';
+          return `<tr>
+          <td>${new Date(t.closedAt).toLocaleString()}</td>
+          <td>${t.symbol}</td>
+          <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
+          <td>${t.qty}</td><td>${Number(t.entry).toFixed(2)}</td><td>${Number(t.exit).toFixed(2)}</td>
+          <td class="${cls}">${t.pnlUsdt >= 0 ? '+' : ''}${Number(t.pnlUsdt).toFixed(4)}</td>
+          <td>${Number(t.feeUsdt || 0).toFixed(4)}</td>
+          <td>${FILL_TYPE[t.reason] || t.reason || '平倉'}</td></tr>`;
+        }).join('') + '</tbody></table>'
+      : '<p class="empty-hint">尚無已平倉紀錄 · 平倉後會顯示於此</p>';
   } else {
     const fills = snap.fills;
     body.innerHTML = fills.length
-      ? `<table><thead><tr><th>時間</th><th>合約</th><th>方向</th><th>標記</th><th>價格</th><th>數量</th><th>費用</th></tr></thead><tbody>`
+      ? `<table class="pos-table"><thead><tr>
+        <th>時間</th><th>合約</th><th>方向</th><th>類型</th><th>價格</th><th>數量</th><th>費用</th>
+        </tr></thead><tbody>`
         + fills.map((f) => {
-          const tag = f.reason === 'liquidation' ? 'liq'
-            : f.reason === 'funding' || f.side === 'funding' ? 'fund'
-            : f.reason === 'sl' ? 'sl'
-            : f.reason === 'tp' ? 'tp'
-            : f.liquidity || '—';
+          const tag = FILL_TYPE[f.reason] || FILL_TYPE[f.liquidity] || f.liquidity || '—';
+          const side = FILL_SIDE[f.side] || f.side;
           return `<tr><td>${new Date(f.ts).toLocaleTimeString()}</td><td>${f.symbol}</td>
-          <td>${f.side}</td><td>${tag}</td><td>${f.price}</td><td>${f.qty}</td>
+          <td>${side}</td><td>${tag}</td><td>${f.price}</td><td>${f.qty}</td>
           <td>${Number(f.feeUsdt || 0).toFixed(4)}</td></tr>`;
         }).join('')
         + '</tbody></table>'
-      : '<p style="color:var(--muted)">目前沒有成交</p>';
+      : '<p class="empty-hint">尚無成交紀錄 · 成交後會顯示於此</p>';
   }
+}
+
+function editTpSl(sym) {
+  const pos = state.account.positions[sym];
+  if (!pos) return;
+  const tpIn = window.prompt(`止盈價（留空清除）目前 ${pos.tp ?? '—'}`, pos.tp ?? '');
+  if (tpIn === null) return;
+  const slIn = window.prompt(`停損價（留空清除）目前 ${pos.sl ?? '—'}`, pos.sl ?? '');
+  if (slIn === null) return;
+  const tp = tpIn.trim() === '' ? null : Number(tpIn);
+  const sl = slIn.trim() === '' ? null : Number(slIn);
+  if (tp != null && !(tp > 0)) return toast('止盈價無效');
+  if (sl != null && !(sl > 0)) return toast('停損價無效');
+  if (pos.side === 'long') {
+    if (sl != null && !(sl < pos.entry)) return toast('多倉停損須低於入場價');
+    if (tp != null && !(tp > pos.entry)) return toast('多倉止盈須高於入場價');
+  } else {
+    if (sl != null && !(sl > pos.entry)) return toast('空倉停損須高於入場價');
+    if (tp != null && !(tp < pos.entry)) return toast('空倉止盈須低於入場價');
+  }
+  updatePositionBrackets(state.account, sym, { tp, sl });
+  persist();
+  renderPosTab();
+  toast(`已更新 ${sym} 止盈／停損`);
+}
+
+function addMarginPrompt(sym) {
+  const pos = state.account.positions[sym];
+  if (!pos) return;
+  const cur = Number(pos.extraMarginUsdt) || 0;
+  const raw = window.prompt(
+    `調整逐倉保證金 USDT（${sym}）\n正數追加、負數減少；目前額外保證金 ${cur.toFixed(2)}`,
+    '100',
+  );
+  if (raw == null) return;
+  const amt = Number(raw);
+  if (!Number.isFinite(amt) || amt === 0) return toast('金額無效');
+  const r = adjustIsolatedMargin(state.account, sym, amt, displayMarks());
+  if (!r.ok) return toast('調保證金失敗：' + r.reason);
+  persist();
+  renderEquity();
+  renderPosTab();
+  toast(amt > 0 ? `已追加 ${amt} USDT` : `已減少 ${-amt} USDT`);
+}
+
+function adjLevPrompt(sym) {
+  const pos = state.account.positions[sym];
+  if (!pos) return;
+  const lev = Number(window.prompt(`調整槓桿（目前 ${pos.leverage}x，最高 50x）`, String(pos.leverage)));
+  if (!(lev >= 1 && lev <= 50)) return toast('槓桿無效');
+  const r = setPositionLeverage(state.account, sym, lev);
+  if (!r.ok) return toast('調整失敗：' + r.reason);
+  if (!state.ui.levBySymbol) state.ui.levBySymbol = {};
+  state.ui.levBySymbol[sym] = lev;
+  persist();
+  renderPosTab();
+  toast(`已調槓桿至 ${lev}x`);
+}
+
+function amendOrderPrompt(orderId) {
+  const o = state.account.orders.find((x) => x.id === orderId && x.status === 'open');
+  if (!o) return;
+  const patch = {};
+  if (o.ordType === 'stop_market' || o.ordType === 'stop_limit') {
+    const trig = Number(window.prompt('新觸發價', String(o.triggerPrice)));
+    if (!(trig > 0)) return toast('觸發價無效');
+    patch.triggerPrice = trig;
+  }
+  if (o.ordType === 'limit' || o.ordType === 'stop_limit') {
+    const price = Number(window.prompt('新限價', String(o.price)));
+    if (!(price > 0)) return toast('限價無效');
+    patch.price = price;
+  }
+  const qty = Number(window.prompt('新數量', String(o.qty)));
+  if (!(qty > 0)) return toast('數量無效');
+  patch.qty = qty;
+  const r = amendOrder(state.account, orderId, patch);
+  if (!r.ok) return toast('修改失敗：' + r.reason);
+  maybeFillLimits(state.account, {
+    lastBySymbol: { ...lastPrices },
+    marks: { ...displayMarks() },
+  }, fees());
+  persist();
+  renderPosTab();
+  toast('已修改委託');
 }
 
 async function confirmHighLev(lev) {
@@ -516,18 +885,39 @@ async function submitOrder(side) {
   const book = market.getBook();
   if (!t) return toast('行情尚未就緒');
   if (challengeBlocksTrading()) return toast('排位賽已結束，請到「段位」頁查看結算');
-  const qty = Number($('#qty').value);
+  let qty = Number($('#qty').value);
   if (!(qty > 0)) return toast('請輸入數量');
   const lev = levEffective();
   if (!(await confirmHighLev(lev))) return;
   const mark = t.markApprox ? null : t.mark;
   const closes = hourlyCloses[market.getSymbol()] || [];
   const ma20 = ma(closes, 20);
-  const entryPx = ordType === 'limit' ? Number($('#limitPrice').value) : t.last;
+  const entryPx = (ordType === 'limit' || ordType === 'stop_limit')
+    ? Number($('#limitPrice').value) : t.last;
+  // USDT notional → coin qty
+  if (state.ui.qtyUnit === 'usdt') {
+    const px = entryPx || t.last;
+    if (!(px > 0)) return toast('無法換算數量');
+    const meta = symbolMeta(market.getSymbol());
+    qty = Math.floor((qty / px) / meta.lot) * meta.lot;
+    if (!(qty > 0)) return toast('換算後數量過小');
+  }
   const vs = entryVsMaSign(entryPx, ma20);
   const reduceOnly = !!$('#reduceOnly')?.checked;
+  const tp = $('#useTp').checked ? Number($('#tp').value) : null;
+  const sl = $('#useSl').checked ? Number($('#sl').value) : null;
   if (!reduceOnly && !$('#useSl').checked && state.settings.beginnerCap) {
     toast('建議設定停損（新手模式）');
+  }
+  if (tp != null || sl != null) {
+    const ref = entryPx || t.last;
+    if (side === 'long') {
+      if (sl != null && !(sl < ref)) return toast('多單停損須低於入場價');
+      if (tp != null && !(tp > ref)) return toast('多單止盈須高於入場價');
+    } else {
+      if (sl != null && !(sl > ref)) return toast('空單停損須高於入場價');
+      if (tp != null && !(tp < ref)) return toast('空單止盈須低於入場價');
+    }
   }
 
   const input = {
@@ -535,11 +925,15 @@ async function submitOrder(side) {
     side,
     ordType,
     qty,
-    price: ordType === 'limit' ? Number($('#limitPrice').value) : undefined,
+    price: (ordType === 'limit' || ordType === 'stop_limit')
+      ? Number($('#limitPrice').value) : undefined,
+    triggerPrice: (ordType === 'stop_market' || ordType === 'stop_limit')
+      ? Number($('#triggerPrice').value) : undefined,
+    tif: ordType === 'limit' ? ($('#tif')?.value || 'GTC') : 'GTC',
     leverage: lev,
     reduceOnly,
-    tp: $('#useTp').checked ? Number($('#tp').value) : null,
-    sl: $('#useSl').checked ? Number($('#sl').value) : null,
+    tp,
+    sl,
   };
   const ctx = {
     book,
@@ -548,7 +942,6 @@ async function submitOrder(side) {
   };
   const r = placeOrder(state.account, input, ctx);
   if (!r.ok) return toast('下單失敗：' + r.reason);
-  // annotate entry vs MA on new position
   const pos = state.account.positions[market.getSymbol()];
   if (pos && vs != null) pos.entryVsMa = vs;
   if (input.sl != null && pos) {
@@ -559,32 +952,137 @@ async function submitOrder(side) {
   persist();
   renderEquity();
   renderPosTab();
-  const px = r.fillPrice ?? entryPx;
+  const px = r.fillPrice ?? entryPx ?? input.triggerPrice;
   const fee = r.feeUsdt ?? 0;
-  toast(`${side === 'long' ? '做多' : '做空'} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
+  const sideLab = side === 'long' ? '做多' : '做空';
+  toast((ordType === 'stop_market' || ordType === 'stop_limit')
+    ? `已掛條件單 ${sideLab} 觸發 ${input.triggerPrice}`
+    : `${sideLab} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
   closeDrawer();
 }
 
-function closePosition() {
-  const sym = market.getSymbol();
+async function closePosition(sym = market.getSymbol(), opts = {}) {
   const pos = state.account.positions[sym];
-  if (!pos) return toast('目前沒有倉位');
-  const t = market.getTicker();
+  if (!pos) {
+    if (!opts.silent) toast('目前沒有倉位');
+    return false;
+  }
+  if (challengeBlocksTrading()) maybeAutoSettleChallenge();
+  const mark = markFor(sym);
+  if (!(mark > 0)) {
+    if (!opts.silent) toast('尚無該合約標記價，無法平倉');
+    return false;
+  }
+  const book = bookFor(sym);
+  if (!book) {
+    if (!opts.silent) toast('尚無該合約盤口，無法平倉');
+    return false;
+  }
+  const pct = opts.pct != null ? opts.pct : 100;
+  const qtyRaw = opts.qty != null ? opts.qty : pos.qty * (pct / 100);
+  const meta = symbolMeta(sym);
+  const closeQty = Math.floor(qtyRaw / meta.lot) * meta.lot;
+  if (!(closeQty > 0)) {
+    if (!opts.silent) toast('平倉數量過小');
+    return false;
+  }
+  if (!opts.silent && !opts.skipConfirm) {
+    const est = ((mark - pos.entry) * (pos.side === 'long' ? 1 : -1) * closeQty);
+    const ok = await confirmTradeAction({
+      title: '確認市價平倉',
+      body: `${sym} ${pos.side === 'long' ? '多' : '空'} ${closeQty}（${pct}%）· 預估盈虧 ${est.toFixed(2)} USDT`,
+      confirmLabel: '確認平倉',
+      danger: true,
+    });
+    if (!ok) return false;
+  }
   const r = placeOrder(state.account, {
     symbol: sym,
     side: pos.side === 'long' ? 'short' : 'long',
     ordType: 'market',
-    qty: pos.qty,
+    qty: closeQty,
     leverage: pos.leverage,
     reduceOnly: true,
-  }, { book: market.getBook(), marks: { ...marks, [sym]: t.markApprox ? t.last : t.mark }, fees: fees() });
-  if (!r.ok) return toast('平倉失敗：' + r.reason);
+  }, {
+    book,
+    marks: { ...displayMarks(), [sym]: mark },
+    fees: fees(),
+  });
+  if (!r.ok) {
+    if (!opts.silent) toast('平倉失敗：' + r.reason);
+    return false;
+  }
   harvestCloses();
   sampleEquity();
   persist();
   renderEquity();
   renderPosTab();
-  toast('已市價平倉');
+  if (!opts.silent) toast(`已市價平倉 ${sym} ${pct}%`);
+  return true;
+}
+
+async function reversePosition(sym = market.getSymbol()) {
+  const pos = state.account.positions[sym];
+  if (!pos) return toast('目前沒有倉位');
+  if (challengeBlocksTrading()) maybeAutoSettleChallenge();
+  const qty = pos.qty;
+  const lev = pos.leverage;
+  const openSide = pos.side === 'long' ? 'short' : 'long';
+  const ok = await confirmTradeAction({
+    title: '確認反手',
+    body: `將平倉 ${sym} ${pos.side === 'long' ? '多' : '空'} ${qty}，並以相同數量開 ${openSide === 'long' ? '多' : '空'}（槓桿 ${lev}x）`,
+    confirmLabel: '確認反手',
+    danger: true,
+  });
+  if (!ok) return;
+  if (!(await closePosition(sym, { silent: true, skipConfirm: true, pct: 100 }))) {
+    return toast('反手失敗：無法平倉');
+  }
+  const mark = markFor(sym);
+  const book = bookFor(sym);
+  if (!(mark > 0) || !book) return toast('反手開倉失敗：無行情');
+  const r = placeOrder(state.account, {
+    symbol: sym,
+    side: openSide,
+    ordType: 'market',
+    qty,
+    leverage: lev,
+    reduceOnly: false,
+  }, {
+    book,
+    marks: { ...displayMarks(), [sym]: mark },
+    fees: fees(),
+  });
+  if (!r.ok) {
+    harvestCloses();
+    sampleEquity();
+    persist();
+    renderEquity();
+    renderPosTab();
+    return toast('已平倉，但反手開倉失敗：' + r.reason);
+  }
+  harvestCloses();
+  sampleEquity();
+  persist();
+  renderEquity();
+  renderPosTab();
+  toast(`已反手 ${sym} → ${openSide === 'long' ? '多' : '空'}`);
+}
+
+async function closeAllPositions() {
+  const syms = Object.keys(state.account.positions || {});
+  if (!syms.length) return toast('目前沒有倉位');
+  const ok = await confirmTradeAction({
+    title: '確認全部平倉',
+    body: `將以市價平倉全部 ${syms.length} 個倉位`,
+    confirmLabel: '全部平倉',
+    danger: true,
+  });
+  if (!ok) return;
+  for (const sym of [...syms]) {
+    await closePosition(sym, { silent: true, skipConfirm: true, pct: 100 });
+  }
+  toast('已全部平倉');
 }
 
 function equityCurveSvg(samples) {
@@ -831,8 +1329,42 @@ function renderSettings() {
   const el = $('#view-settings');
   const s = state.settings;
   const chActive = state.challenge?.status === 'active';
+  const driveLabel = drive.statusLabel(driveSyncStatus);
   el.innerHTML = `<div class="page-head"><h1>設定</h1>
-    <p>帳戶、費用、資料來源與免責聲明。</p></div>
+    <p>帳戶、雲端備份、費用、資料來源與免責聲明。</p></div>
+    <div class="panel-block">
+      <h3>Google Drive 備份</h3>
+      <p style="color:var(--muted);font-size:12px;line-height:1.55;margin-bottom:8px">
+        與 Solara 相同模式：僅寫入 Drive「應用程式資料」資料夾，檔名
+        <span class="mono">${DRIVE_FILE}</span>（不會覆蓋 Solara）。
+        請在 Google Cloud Console 建立 OAuth 網頁用戶端，並把
+        <span class="mono">http://localhost:8765</span>／GitHub Pages 網址加入授權來源。
+      </p>
+      <label class="field">OAuth Client ID
+        <input id="googleClientId" type="text" autocomplete="off"
+          placeholder="xxxx.apps.googleusercontent.com"
+          value="${s.googleClientId || ''}" />
+      </label>
+      <label style="display:block;margin:8px 0">
+        <input type="checkbox" id="setAutoSync" ${s.autoSync !== false ? 'checked' : ''}/>
+        變更後自動同步
+      </label>
+      <p id="drivePill" class="mono" style="color:var(--muted);margin:6px 0">雲端 · ${driveLabel}</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn accent" id="btnDriveConnect" style="width:auto">連接／重新登入</button>
+        <button type="button" class="btn ghost" id="btnDriveSync" style="width:auto">立即同步</button>
+        <button type="button" class="btn ghost" id="btnDriveDisconnect" style="width:auto">斷開</button>
+      </div>
+    </div>
+    <div class="panel-block">
+      <h3>歷史回放（規劃中）</h3>
+      <p style="color:var(--muted);font-size:12px;line-height:1.55">
+        下一階段會支援：選起始日（例如一年前）→ 用真實歷史 K 線重播 →
+        下單並設止盈／停損 →「播放至結果」自動推進，直到觸及目標或停損。
+        回放只計練習報告，不進排位榜。詳見
+        <span class="mono">ROADMAP-REPLAY-DRIVE.md</span>。
+      </p>
+    </div>
     <div class="panel-block">
       <label class="field">Maker 費率 <input id="setMaker" type="number" step="0.0001" value="${s.makerFee}" /></label>
       <label class="field">Taker 費率 <input id="setTaker" type="number" step="0.0001" value="${s.takerFee}" /></label>
@@ -876,6 +1408,31 @@ function renderSettings() {
   $('#setTaker').onchange = (e) => { state.settings.takerFee = Number(e.target.value); persist(); };
   $('#setBeginner').onchange = (e) => { state.settings.beginnerCap = e.target.checked; persist(); };
   $('#setMild').onchange = (e) => { state.settings.mildLabels = e.target.checked; persist(); };
+  $('#setAutoSync').onchange = (e) => {
+    state.settings.autoSync = e.target.checked;
+    persist();
+    if (e.target.checked) drive.startAutoSyncLoop();
+  };
+  $('#googleClientId').onchange = (e) => {
+    state.settings.googleClientId = e.target.value.trim();
+    persist();
+    drive.initGoogleAuth();
+  };
+  $('#btnDriveConnect').onclick = () => {
+    const id = $('#googleClientId').value.trim();
+    drive.connect(id).then((ok) => { if (ok) renderSettings(); });
+  };
+  $('#btnDriveSync').onclick = () => {
+    if (!state.settings.googleConnected) return toast('請先連接 Google Drive');
+    drive.sync({ push: true, force: true }).then(() => {
+      toast('同步完成');
+      renderSettings();
+    });
+  };
+  $('#btnDriveDisconnect').onclick = () => {
+    drive.disconnect();
+    renderSettings();
+  };
   $('#btnTopUp').onclick = () => {
     if (chActive && !state.challenge.allowTopUp) return toast('排位賽期間禁止補倉');
     const amt = Number($('#topUpAmt').value);
@@ -962,6 +1519,35 @@ function closeDrawer() {
   backdrop.classList.add('hidden');
 }
 
+function syncOrdTypeUi() {
+  $$('#ordTypeSeg button').forEach((x) => x.classList.toggle('active', x.dataset.type === ordType));
+  const showLimitPx = ordType === 'limit' || ordType === 'stop_limit';
+  const showTrig = ordType === 'stop_market' || ordType === 'stop_limit';
+  $$('.limit-only').forEach((x) => x.classList.toggle('hidden', !showLimitPx));
+  const tifField = $('#tif')?.closest('label, .field');
+  if (tifField) tifField.classList.toggle('hidden', ordType !== 'limit');
+  $$('.cond-only').forEach((x) => x.classList.toggle('hidden', !showTrig));
+}
+
+function applyRoiHelper(kind, pct) {
+  const t = market.getTicker();
+  if (!t) return toast('行情尚未就緒');
+  const px = t.last;
+  const side = submitSide;
+  if (kind === 'tp') {
+    const tp = side === 'long' ? px * (1 + pct / 100) : px * (1 - pct / 100);
+    $('#useTp').checked = true;
+    $('#tp').disabled = false;
+    $('#tp').value = String(Number(tp.toFixed(4)));
+  } else {
+    const sl = side === 'long' ? px * (1 - pct / 100) : px * (1 + pct / 100);
+    $('#useSl').checked = true;
+    $('#sl').disabled = false;
+    $('#sl').value = String(Number(sl.toFixed(4)));
+  }
+  updatePreSummary();
+}
+
 function wireUi() {
   $('#btnEnter').onclick = enterApp;
   $$('.nav button').forEach((b) => {
@@ -969,22 +1555,53 @@ function wireUi() {
   });
   $('#leverage').oninput = () => {
     $('#levVal').textContent = levEffective() + 'x';
+    const badge = $('#levBadge');
+    if (badge) badge.innerHTML = `槓桿 <span id="levVal">${levEffective()}x</span> / 最高 50x`;
+    if (!state.ui.levBySymbol) state.ui.levBySymbol = {};
+    state.ui.levBySymbol[market.getSymbol()] = levEffective();
     updatePreSummary();
   };
+  $('#levBadge')?.addEventListener('click', () => {
+    const next = Number(window.prompt('設定槓桿（1–50）', String(levEffective())));
+    if (!(next >= 1 && next <= 50)) return;
+    $('#leverage').value = String(next);
+    $('#leverage').dispatchEvent(new Event('input'));
+  });
   $('#qty').oninput = updatePreSummary;
-  $('#limitPrice').oninput = updatePreSummary;
+  document.querySelectorAll('input[name="qtyUnit"]').forEach((el) => {
+    el.onchange = () => {
+      state.ui.qtyUnit = el.value;
+      const lab = $('#qtyUnitLabel');
+      if (lab) lab.textContent = el.value === 'usdt' ? '（USDT 名義）' : '（幣）';
+      persist();
+      updatePreSummary();
+    };
+  });
+  if (state.ui.qtyUnit === 'usdt') {
+    const u = $('#qtyUnitUsdt');
+    if (u) u.checked = true;
+    const lab = $('#qtyUnitLabel');
+    if (lab) lab.textContent = '（USDT 名義）';
+  }
+  $('#limitPrice')?.addEventListener('input', updatePreSummary);
+  $('#triggerPrice')?.addEventListener('input', updatePreSummary);
   $('#reduceOnly')?.addEventListener('change', updatePreSummary);
   $('#sizeChips')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-pct]');
     if (!b) return;
     setQtyFromPct(Number(b.dataset.pct));
   });
+  $('#roiChips')?.addEventListener('click', (e) => {
+    const tp = e.target.closest('[data-roi-tp]');
+    if (tp) return applyRoiHelper('tp', Number(tp.dataset.roiTp));
+    const sl = e.target.closest('[data-roi-sl]');
+    if (sl) return applyRoiHelper('sl', Number(sl.dataset.roiSl));
+  });
   $('#ordTypeSeg').onclick = (e) => {
     const b = e.target.closest('button[data-type]');
     if (!b) return;
     ordType = b.dataset.type;
-    $$('#ordTypeSeg button').forEach((x) => x.classList.toggle('active', x === b));
-    $$('.limit-only').forEach((x) => x.classList.toggle('hidden', ordType !== 'limit'));
+    syncOrdTypeUi();
     updatePreSummary();
   };
   $('#useTp').onchange = (e) => { $('#tp').disabled = !e.target.checked; };
@@ -996,12 +1613,33 @@ function wireUi() {
   };
   $('#btnLong').onclick = () => { submitSide = 'long'; };
   $('#btnShort').onclick = () => { submitSide = 'short'; };
-  $('#btnClose').onclick = closePosition;
+  $('#btnClose').onclick = () => closePosition(market.getSymbol());
   $('#posTabHeads').onclick = (e) => {
+    if (e.target.closest('#btnCloseAll')) {
+      closeAllPositions();
+      return;
+    }
+    if (e.target.closest('#btnCancelAll')) {
+      (async () => {
+        const n = state.account.orders.filter((o) => o.status === 'open').length;
+        const ok = await confirmTradeAction({
+          title: '確認全部撤單',
+          body: `將取消全部 ${n} 筆當前委託`,
+          confirmLabel: '全部撤單',
+          danger: true,
+        });
+        if (!ok) return;
+        const r = cancelAllOrders(state.account);
+        persist();
+        renderPosTab();
+        toast(`已撤銷 ${r.count} 筆委託`);
+      })();
+      return;
+    }
     const b = e.target.closest('button[data-tab]');
     if (!b) return;
     posTab = b.dataset.tab;
-    $$('#posTabHeads button').forEach((x) => x.classList.toggle('active', x === b));
+    $$('#posTabHeads button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
     renderPosTab();
   };
   $('#toggleBook').onclick = () => {
@@ -1011,6 +1649,8 @@ function wireUi() {
   $('#drawerBackdrop').onclick = (e) => {
     if (e.target === $('#drawerBackdrop')) closeDrawer();
   };
+  syncOrdTypeUi();
+  refreshTicketHead();
 
   market.on((ev) => {
     if (ev.type === 'conn') updateConn(ev.payload);
@@ -1029,6 +1669,7 @@ function wireUi() {
 
   if (loaded.recovered) toast('已從備份或預設資料恢復');
   if (state.ui.entered) enterApp();
+  drive.boot();
 }
 
 wireUi();

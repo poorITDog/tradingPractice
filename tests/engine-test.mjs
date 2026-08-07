@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {
   createAccount, placeOrder, onMarkUpdate, settleFunding, liqPrice,
-  accountSnapshot, cancelOrder,
+  accountSnapshot, cancelOrder, cancelAllOrders, amendOrder,
+  updatePositionBrackets, maybeFillLimits,
 } from '../lib/engine.js';
 
 const fees = { maker: 0.0002, taker: 0.00055 };
@@ -122,5 +123,43 @@ assert.ok(acc.positions.BTCUSDT);
 const paused = onMarkUpdate(acc, 'BTCUSDT', null, fees);
 assert.equal(paused.length, 0);
 assert.ok(acc.positions.BTCUSDT);
+
+// Stop-market + cancel all + amend + brackets
+acc = createAccount(50000);
+r = placeOrder(acc, {
+  symbol: 'BTCUSDT', side: 'long', ordType: 'stop_market', qty: 0.01,
+  leverage: 5, triggerPrice: 110,
+}, { book, marks: { BTCUSDT: 100 }, fees });
+assert.equal(r.ok, true);
+assert.equal(acc.orders.filter((o) => o.status === 'open').length, 1);
+maybeFillLimits(acc, { lastBySymbol: { BTCUSDT: 111 }, marks: { BTCUSDT: 111 } }, fees);
+assert.ok(acc.positions.BTCUSDT);
+assert.equal(updatePositionBrackets(acc, 'BTCUSDT', { tp: 120, sl: 90 }).ok, true);
+assert.equal(acc.positions.BTCUSDT.tp, 120);
+
+acc = createAccount(50000);
+placeOrder(acc, {
+  symbol: 'BTCUSDT', side: 'long', ordType: 'limit', qty: 0.01, price: 50, leverage: 5,
+}, { book, marks: { BTCUSDT: 100 }, fees });
+placeOrder(acc, {
+  symbol: 'ETHUSDT', side: 'long', ordType: 'limit', qty: 0.1, price: 1000, leverage: 5,
+}, { book: { asks: [[2000, 10]], bids: [[1990, 10]] }, marks: { ETHUSDT: 2000, BTCUSDT: 100 }, fees });
+assert.equal(cancelAllOrders(acc).count, 2);
+acc.orders = [{
+  id: 'ord_x', symbol: 'BTCUSDT', side: 'long', ordType: 'limit', qty: 0.01,
+  price: 90, leverage: 5, reduceOnly: false, status: 'open', createdAt: 1, tif: 'GTC',
+}];
+assert.equal(amendOrder(acc, 'ord_x', { price: 91, qty: 0.02 }).ok, true);
+assert.equal(acc.orders[0].price, 91);
+
+// Stop-limit + amend trigger
+acc = createAccount(50000);
+r = placeOrder(acc, {
+  symbol: 'BTCUSDT', side: 'short', ordType: 'stop_limit', qty: 0.01,
+  leverage: 5, triggerPrice: 90, price: 89.5,
+}, { book, marks: { BTCUSDT: 100 }, fees });
+assert.equal(r.ok, true);
+assert.equal(amendOrder(acc, r.order.id, { triggerPrice: 91, qty: 0.02 }).ok, true);
+assert.equal(acc.orders.find((o) => o.id === r.order.id).triggerPrice, 91);
 
 console.log('engine-test OK');
