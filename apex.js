@@ -2184,13 +2184,18 @@ function renderReplay() {
       <h3>回放成績（本機）</h3>
       ${results.length ? `<table class="pos-table"><thead><tr>
         <th>時間</th><th>合約</th><th>結果</th><th>盈虧</th><th>K線數</th>
-      </tr></thead><tbody>${results.slice(0, 20).map((r) => `<tr>
+      </tr></thead><tbody>${results.slice(0, 20).map((r) => {
+    const reasonLab = {
+      tp: '止盈', sl: '停損', liquidation: '強平', end: '行情結束', cap: '步數上限',
+    }[r.reason] || r.reason;
+    return `<tr>
         <td>${new Date(r.ts).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
         <td>${r.symbol}</td>
-        <td>${r.reason}</td>
+        <td>${reasonLab}</td>
         <td class="${r.pnlUsdt >= 0 ? 'up' : 'down'}">${fmtPnl(r.pnlUsdt)}</td>
         <td>${r.durationBars}</td>
-      </tr>`).join('')}</tbody></table>`
+      </tr>`;
+  }).join('')}</tbody></table>`
     : '<p class="empty-hint">尚無回放成績。完成「播放至結果」後會顯示於此。</p>'}
     </div>`;
 
@@ -2427,7 +2432,7 @@ function syncOrdTypeUi() {
 }
 
 function applyRoiHelper(kind, pct) {
-  const t = market.getTicker();
+  const t = activeTicker();
   if (!t) return toast('行情尚未就緒');
   const px = t.last;
   const side = submitSide;
