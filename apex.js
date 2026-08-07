@@ -15,6 +15,7 @@ import {
 import {
   formatRank, nextRankHint, displayTier, TIER_LABEL,
 } from './lib/ladder.js';
+import { createDriveClient, DRIVE_FILE } from './lib/drive.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -42,6 +43,7 @@ let submitSide = 'long';
 let coachStep = 0;
 let rankSort = 'score';
 let lastLiqWarnAt = 0;
+let driveSyncStatus = 'disconnected';
 
 function toast(msg) {
   const el = $('#toast');
@@ -51,14 +53,50 @@ function toast(msg) {
   toast._t = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+const drive = createDriveClient({
+  getState: () => state,
+  setState: (next) => { state = next; },
+  saveLocal: () => {
+    try { saveState(state); } catch (e) { console.warn(e); }
+  },
+  onStatus: (s) => {
+    driveSyncStatus = s;
+    const pill = $('#drivePill');
+    if (pill) pill.textContent = '雲端 · ' + drive.statusLabel(s);
+  },
+  toast,
+});
+
 function persist() {
   try {
+    state.syncUpdatedAt = Date.now();
     const r = saveState(state);
     if (!r.ok && r.reason === 'quota') toast('儲存空間不足');
     else if (!r.ok) console.warn('saveState', r.reason);
+    else drive.scheduleUpload();
   } catch (e) {
     console.warn('persist failed', e);
   }
+}
+
+// Book for the active symbol, or a deep synthetic book for off-symbol close.
+function bookFor(sym) {
+  if (sym === market.getSymbol()) return market.getBook();
+  const px = marks[sym] ?? lastPrices[sym];
+  if (!(px > 0)) return market.getBook();
+  return {
+    asks: [[px * 1.00005, 1e9]],
+    bids: [[px * 0.99995, 1e9]],
+    ts: Date.now(),
+  };
+}
+
+function markFor(sym) {
+  if (marks[sym] != null) return marks[sym];
+  if (lastPrices[sym] != null) return lastPrices[sym];
+  const t = market.getTicker();
+  if (t && market.getSymbol() === sym) return t.markApprox ? t.last : t.mark;
+  return null;
 }
 
 function fees() {
@@ -450,30 +488,62 @@ function renderEquity() {
 function renderPosTab() {
   const body = $('#posTabBody');
   const snap = accountSnapshot(state.account, displayMarks(), fees());
+  body.onclick = null;
   if (posTab === 'positions') {
     if (!snap.positions.length) {
       body.innerHTML = '<p style="color:var(--muted)">目前沒有倉位</p>';
       return;
     }
-    body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>標記</th><th>盈虧</th><th>強平</th><th>距離強平</th></tr></thead><tbody>`
+    body.innerHTML = `<table class="pos-table"><thead><tr>
+      <th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>標記</th>
+      <th>盈虧</th><th>止盈</th><th>停損</th><th>強平</th><th>距離強平</th><th>操作</th>
+      </tr></thead><tbody>`
       + snap.positions.map((p) => {
         const band = p.distToLiq < 0.03 ? 'crit' : p.distToLiq < 0.08 ? 'warn' : '';
         const bandTxt = band === 'crit' ? '危急 ' : band === 'warn' ? '警告 ' : '';
         const pnlCls = p.upnl >= 0 ? 'up' : 'down';
-        return `<tr class="liq-${band}"><td>${p.symbol}</td><td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? '多' : '空'}</td>
-        <td>${p.qty}</td><td>${p.entry.toFixed(2)}</td><td>${p.mark?.toFixed?.(2) ?? '—'}</td>
+        const tpTxt = p.tp != null ? Number(p.tp).toFixed(2) : '—';
+        const slTxt = p.sl != null ? Number(p.sl).toFixed(2) : '—';
+        return `<tr class="liq-${band}">
+        <td>${p.symbol}</td>
+        <td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? '多' : '空'}</td>
+        <td>${p.qty}</td><td>${p.entry.toFixed(2)}</td>
+        <td>${p.mark?.toFixed?.(2) ?? '—'}</td>
         <td class="${pnlCls}">${p.upnl >= 0 ? '+' : ''}${p.upnl.toFixed(2)}</td>
-        <td>${p.liqPrice.toFixed(2)}</td><td>${bandTxt}${(p.distToLiq * 100).toFixed(2)}%</td></tr>`;
+        <td class="up">${tpTxt}</td><td class="down">${slTxt}</td>
+        <td>${p.liqPrice.toFixed(2)}</td>
+        <td class="liq-dist">${bandTxt}${(p.distToLiq * 100).toFixed(2)}%</td>
+        <td class="pos-actions">
+          <button type="button" class="btn-row close" data-close="${p.symbol}">市價平倉</button>
+          <button type="button" class="btn-row flip" data-flip="${p.symbol}">反手</button>
+        </td></tr>`;
       }).join('') + '</tbody></table>';
+    body.onclick = (e) => {
+      const closeBtn = e.target.closest('[data-close]');
+      if (closeBtn) {
+        closePosition(closeBtn.dataset.close);
+        return;
+      }
+      const flipBtn = e.target.closest('[data-flip]');
+      if (flipBtn) reversePosition(flipBtn.dataset.flip);
+    };
   } else if (posTab === 'orders') {
     const rows = snap.openOrders;
     if (!rows.length) {
       body.innerHTML = '<p style="color:var(--muted)">目前沒有掛單</p>';
       return;
     }
-    body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>價</th><th>量</th><th></th></tr></thead><tbody>`
-      + rows.map((o) => `<tr><td>${o.symbol}</td><td>${o.side}</td><td>${o.price}</td><td>${o.qty}</td>
-        <td><button type="button" data-cancel="${o.id}">取消</button></td></tr>`).join('')
+    body.innerHTML = `<table class="pos-table"><thead><tr>
+      <th>合約</th><th>方向</th><th>價</th><th>量</th><th>只減倉</th><th>操作</th>
+      </tr></thead><tbody>`
+      + rows.map((o) => `<tr>
+        <td>${o.symbol}</td>
+        <td class="${o.side === 'long' ? 'up' : 'down'}">${o.side === 'long' ? '買／多' : '賣／空'}</td>
+        <td>${o.price}</td><td>${o.qty}</td>
+        <td>${o.reduceOnly ? '是' : '—'}</td>
+        <td class="pos-actions">
+          <button type="button" class="btn-row cancel" data-cancel="${o.id}">取消</button>
+        </td></tr>`).join('')
       + '</tbody></table>';
     body.onclick = (e) => {
       const b = e.target.closest('[data-cancel]');
@@ -481,11 +551,12 @@ function renderPosTab() {
       cancelOrder(state.account, b.dataset.cancel);
       persist();
       renderPosTab();
+      toast('已取消掛單');
     };
   } else {
     const fills = snap.fills;
     body.innerHTML = fills.length
-      ? `<table><thead><tr><th>時間</th><th>合約</th><th>方向</th><th>標記</th><th>價格</th><th>數量</th><th>費用</th></tr></thead><tbody>`
+      ? `<table class="pos-table"><thead><tr><th>時間</th><th>合約</th><th>方向</th><th>標記</th><th>價格</th><th>數量</th><th>費用</th></tr></thead><tbody>`
         + fills.map((f) => {
           const tag = f.reason === 'liquidation' ? 'liq'
             : f.reason === 'funding' || f.side === 'funding' ? 'fund'
@@ -565,11 +636,21 @@ async function submitOrder(side) {
   closeDrawer();
 }
 
-function closePosition() {
-  const sym = market.getSymbol();
+function closePosition(sym = market.getSymbol(), opts = {}) {
   const pos = state.account.positions[sym];
-  if (!pos) return toast('目前沒有倉位');
-  const t = market.getTicker();
+  if (!pos) {
+    if (!opts.silent) toast('目前沒有倉位');
+    return false;
+  }
+  if (challengeBlocksTrading()) {
+    if (!opts.silent) toast('排位賽已結束，請到「段位」頁查看結算');
+    return false;
+  }
+  const mark = markFor(sym);
+  if (!(mark > 0)) {
+    if (!opts.silent) toast('尚無該合約標記價');
+    return false;
+  }
   const r = placeOrder(state.account, {
     symbol: sym,
     side: pos.side === 'long' ? 'short' : 'long',
@@ -577,14 +658,60 @@ function closePosition() {
     qty: pos.qty,
     leverage: pos.leverage,
     reduceOnly: true,
-  }, { book: market.getBook(), marks: { ...marks, [sym]: t.markApprox ? t.last : t.mark }, fees: fees() });
-  if (!r.ok) return toast('平倉失敗：' + r.reason);
+  }, {
+    book: bookFor(sym),
+    marks: { ...displayMarks(), [sym]: mark },
+    fees: fees(),
+  });
+  if (!r.ok) {
+    if (!opts.silent) toast('平倉失敗：' + r.reason);
+    return false;
+  }
   harvestCloses();
   sampleEquity();
   persist();
   renderEquity();
   renderPosTab();
-  toast('已市價平倉');
+  if (!opts.silent) toast(`已市價平倉 ${sym}`);
+  return true;
+}
+
+// Close then open opposite size — Bybit / OKX style reverse.
+function reversePosition(sym = market.getSymbol()) {
+  const pos = state.account.positions[sym];
+  if (!pos) return toast('目前沒有倉位');
+  if (challengeBlocksTrading()) return toast('排位賽已結束，請到「段位」頁查看結算');
+  const qty = pos.qty;
+  const lev = pos.leverage;
+  const openSide = pos.side === 'long' ? 'short' : 'long';
+  if (!closePosition(sym, { silent: true })) return toast('反手失敗：無法平倉');
+  const mark = markFor(sym);
+  const r = placeOrder(state.account, {
+    symbol: sym,
+    side: openSide,
+    ordType: 'market',
+    qty,
+    leverage: lev,
+    reduceOnly: false,
+  }, {
+    book: bookFor(sym),
+    marks: { ...displayMarks(), [sym]: mark },
+    fees: fees(),
+  });
+  if (!r.ok) {
+    harvestCloses();
+    sampleEquity();
+    persist();
+    renderEquity();
+    renderPosTab();
+    return toast('已平倉，但反手開倉失敗：' + r.reason);
+  }
+  harvestCloses();
+  sampleEquity();
+  persist();
+  renderEquity();
+  renderPosTab();
+  toast(`已反手 ${sym} → ${openSide === 'long' ? '多' : '空'}`);
 }
 
 function equityCurveSvg(samples) {
@@ -831,8 +958,42 @@ function renderSettings() {
   const el = $('#view-settings');
   const s = state.settings;
   const chActive = state.challenge?.status === 'active';
+  const driveLabel = drive.statusLabel(driveSyncStatus);
   el.innerHTML = `<div class="page-head"><h1>設定</h1>
-    <p>帳戶、費用、資料來源與免責聲明。</p></div>
+    <p>帳戶、雲端備份、費用、資料來源與免責聲明。</p></div>
+    <div class="panel-block">
+      <h3>Google Drive 備份</h3>
+      <p style="color:var(--muted);font-size:12px;line-height:1.55;margin-bottom:8px">
+        與 Solara 相同模式：僅寫入 Drive「應用程式資料」資料夾，檔名
+        <span class="mono">${DRIVE_FILE}</span>（不會覆蓋 Solara）。
+        請在 Google Cloud Console 建立 OAuth 網頁用戶端，並把
+        <span class="mono">http://localhost:8765</span>／GitHub Pages 網址加入授權來源。
+      </p>
+      <label class="field">OAuth Client ID
+        <input id="googleClientId" type="text" autocomplete="off"
+          placeholder="xxxx.apps.googleusercontent.com"
+          value="${s.googleClientId || ''}" />
+      </label>
+      <label style="display:block;margin:8px 0">
+        <input type="checkbox" id="setAutoSync" ${s.autoSync !== false ? 'checked' : ''}/>
+        變更後自動同步
+      </label>
+      <p id="drivePill" class="mono" style="color:var(--muted);margin:6px 0">雲端 · ${driveLabel}</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn accent" id="btnDriveConnect" style="width:auto">連接／重新登入</button>
+        <button type="button" class="btn ghost" id="btnDriveSync" style="width:auto">立即同步</button>
+        <button type="button" class="btn ghost" id="btnDriveDisconnect" style="width:auto">斷開</button>
+      </div>
+    </div>
+    <div class="panel-block">
+      <h3>歷史回放（規劃中）</h3>
+      <p style="color:var(--muted);font-size:12px;line-height:1.55">
+        下一階段會支援：選起始日（例如一年前）→ 用真實歷史 K 線重播 →
+        下單並設止盈／停損 →「播放至結果」自動推進，直到觸及目標或停損。
+        回放只計練習報告，不進排位榜。詳見
+        <span class="mono">ROADMAP-REPLAY-DRIVE.md</span>。
+      </p>
+    </div>
     <div class="panel-block">
       <label class="field">Maker 費率 <input id="setMaker" type="number" step="0.0001" value="${s.makerFee}" /></label>
       <label class="field">Taker 費率 <input id="setTaker" type="number" step="0.0001" value="${s.takerFee}" /></label>
@@ -876,6 +1037,31 @@ function renderSettings() {
   $('#setTaker').onchange = (e) => { state.settings.takerFee = Number(e.target.value); persist(); };
   $('#setBeginner').onchange = (e) => { state.settings.beginnerCap = e.target.checked; persist(); };
   $('#setMild').onchange = (e) => { state.settings.mildLabels = e.target.checked; persist(); };
+  $('#setAutoSync').onchange = (e) => {
+    state.settings.autoSync = e.target.checked;
+    persist();
+    if (e.target.checked) drive.startAutoSyncLoop();
+  };
+  $('#googleClientId').onchange = (e) => {
+    state.settings.googleClientId = e.target.value.trim();
+    persist();
+    drive.initGoogleAuth();
+  };
+  $('#btnDriveConnect').onclick = () => {
+    const id = $('#googleClientId').value.trim();
+    drive.connect(id).then((ok) => { if (ok) renderSettings(); });
+  };
+  $('#btnDriveSync').onclick = () => {
+    if (!state.settings.googleConnected) return toast('請先連接 Google Drive');
+    drive.sync({ push: true, force: true }).then(() => {
+      toast('同步完成');
+      renderSettings();
+    });
+  };
+  $('#btnDriveDisconnect').onclick = () => {
+    drive.disconnect();
+    renderSettings();
+  };
   $('#btnTopUp').onclick = () => {
     if (chActive && !state.challenge.allowTopUp) return toast('排位賽期間禁止補倉');
     const amt = Number($('#topUpAmt').value);
@@ -996,7 +1182,7 @@ function wireUi() {
   };
   $('#btnLong').onclick = () => { submitSide = 'long'; };
   $('#btnShort').onclick = () => { submitSide = 'short'; };
-  $('#btnClose').onclick = closePosition;
+  $('#btnClose').onclick = () => closePosition(market.getSymbol());
   $('#posTabHeads').onclick = (e) => {
     const b = e.target.closest('button[data-tab]');
     if (!b) return;
@@ -1029,6 +1215,7 @@ function wireUi() {
 
   if (loaded.recovered) toast('已從備份或預設資料恢復');
   if (state.ui.entered) enterApp();
+  drive.boot();
 }
 
 wireUi();

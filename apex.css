@@ -267,8 +267,46 @@ button { cursor: pointer; }
   min-height: 36px;
 }
 .size-chips button:hover { color: var(--text); border-color: var(--accent); }
-.liq-warn td:last-child { color: var(--warning); }
-.liq-crit td:last-child { color: var(--danger); font-weight: 700; }
+.liq-warn .liq-dist { color: var(--warning); }
+.liq-crit .liq-dist { color: var(--danger); font-weight: 700; }
+.pos-table th:last-child,
+.pos-table td.pos-actions {
+  position: sticky;
+  right: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+.pos-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.btn-row {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 4px 8px;
+  min-height: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-row.close {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.btn-row.flip {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-row.cancel {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn-row:hover { filter: brightness(1.15); }
 .rank-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
 .rank-table th, .rank-table td {
   text-align: left;

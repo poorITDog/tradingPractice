@@ -27,7 +27,8 @@
 |------|------|
 | 定位 | 自用／教學向 USDT 永續模擬練習器 |
 | 真實感 | 真實 K 線／ticker／mark／orderbook／funding；虛擬資金；本地模擬撮合 |
-| 不做（v1） | 真金出入金、KYC、期權、Cross、Hedge、Post-Only／條件單進階、雲端帳號／雲端排行、ADL、保險基金動態、隊列優先級鏡像 |
+| 不做（v1） | 真金出入金、KYC、期權、Cross、Hedge、Post-Only／條件單進階、雲端公開排行、ADL、保險基金動態、隊列優先級鏡像 |
+| 進行中 | Google Drive 個人備份（`drive.appdata`）；歷史回放見 [`ROADMAP-REPLAY-DRIVE.md`](ROADMAP-REPLAY-DRIVE.md) |
 | 與 Solara | 獨立 repo；唔放喺 Solara（self-use-web） |
 | 部署 | GitHub Pages：`…/tradingPractice/` |
 

@@ -15,7 +15,9 @@ const paths = [
   '/lib/money.js',
   '/lib/rank.js',
   '/lib/ladder.js',
+  '/lib/drive.js',
   '/RANKING.md',
+  '/ROADMAP-REPLAY-DRIVE.md',
 ];
 
 for (const p of paths) {
