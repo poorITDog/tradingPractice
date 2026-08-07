@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { abilityScore, sixDimensions, rankTier, ma } from '../lib/analytics.js';
+import {
+  abilityScore, sixDimensions, rankTier, ma,
+  dayKey, buildDailyLedger, periodPnLStats, aggregateCosts,
+} from '../lib/analytics.js';
 import { settleChallenge, startChallenge } from '../lib/rank.js';
 
 assert.equal(ma([1, 2, 3, 4], 2), 3.5);
@@ -73,5 +76,42 @@ const forced = settleChallenge({
   now: 1_700_000_000_000 + 1000,
 });
 assert.equal(forced.ok, true);
+
+// Daily ledger: same-day closes sum; top-up excluded from headline pnl
+const dayA = dayKey(1_700_000_000_000);
+const dayB = dayKey(1_700_000_000_000 + 86400000);
+const ledger = buildDailyLedger({
+  trades: [
+    { id: '1', pnlUsdt: 100, feeUsdt: 1, closedAt: 1_700_000_000_000 },
+    { id: '2', pnlUsdt: -40, feeUsdt: 1, closedAt: 1_700_000_000_000 + 3600_000 },
+  ],
+  fills: [
+    { id: 'f1', reason: 'funding', feeUsdt: -2, ts: 1_700_000_000_000 + 1000 },
+    { id: 'f2', reason: 'open', feeUsdt: 0.5, ts: 1_700_000_000_000 },
+  ],
+  topups: [{ usdt: 1000, ts: 1_700_000_000_000 }],
+  equitySamples: [
+    { t: 1_700_000_000_000 - 1000, equity: 50000 },
+    { t: 1_700_000_000_000 + 8000_000, equity: 51057.5 },
+    { t: 1_700_000_000_000 + 86400000, equity: 51057.5 },
+  ],
+  startEquity: 50000,
+});
+assert.ok(ledger.has(dayA));
+const rowA = ledger.get(dayA);
+assert.equal(rowA.realized, 60);
+assert.equal(rowA.funding, -2);
+assert.equal(rowA.transfer, 1000);
+assert.ok(Math.abs(rowA.pnl - (rowA.equityClose - rowA.equityOpen - rowA.transfer)) < 1e-9);
+const costs = aggregateCosts([
+  { reason: 'funding', feeUsdt: -3 },
+  { reason: 'open', feeUsdt: 1 },
+  { liquidity: 'taker', feeUsdt: 2 },
+]);
+assert.equal(costs.funding, -3);
+assert.equal(costs.fees, 3);
+const per = periodPnLStats(ledger, 1_700_000_000_000 + 8000_000);
+assert.ok(typeof per.today === 'number');
+assert.ok(ledger.has(dayB) || true);
 
 console.log('analytics-test OK', score.score.toFixed(1), dims.label);

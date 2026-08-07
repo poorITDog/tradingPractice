@@ -79,6 +79,7 @@
                 <button type="button" data-type="limit">限價</button>
                 <button type="button" data-type="stop_market">條件市價</button>
                 <button type="button" data-type="stop_limit">條件限價</button>
+                <button type="button" data-type="stop_trail">追蹤止損</button>
               </div>
               <div class="row checks">
                 <label><input type="radio" name="qtyUnit" id="qtyUnitCoin" value="coin" checked /> 幣數量</label>
@@ -98,6 +99,9 @@
               </label>
               <label class="field cond-only hidden">觸發價
                 <input type="number" id="triggerPrice" step="any" min="0" />
+              </label>
+              <label class="field trail-only hidden">回撤％
+                <input type="number" id="trailPct" step="any" min="0.1" max="49" value="1" />
               </label>
               <label class="field limit-only hidden">時效 (TIF)
                 <select id="tif">

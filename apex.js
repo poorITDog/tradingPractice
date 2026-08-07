@@ -8,7 +8,8 @@ import {
 import { loadState, saveState, exportState, importState } from './lib/store.js';
 import {
   abilityScore, sixDimensions, rankTier, ma, entryVsMaSign,
-  maxDrawdownPct, sharpeLike,
+  maxDrawdownPct, sharpeLike, dayKey, buildDailyLedger, periodPnLStats,
+  aggregateCosts, pickEquitySeries, exportDailyStatementCsv, taipeiYMD, filterClosedTrades,
 } from './lib/analytics.js';
 import {
   startChallenge, challengeRemaining, settleChallenge, pushLeaderboard, exportScoreCard,
@@ -47,9 +48,19 @@ let rankSort = 'score';
 let lastLiqWarnAt = 0;
 let driveSyncStatus = 'disconnected';
 let lastOffSymbolPoll = 0;
+let portfolioMonth = null; // Date at month start
+let portfolioRange = '30';
+let portfolioDay = null;
+let portfolioFilterSym = '';
+let portfolioFilterFrom = '';
+let portfolioFilterTo = '';
+let blotterFilterSym = '';
+let blotterFilterFrom = '';
+let blotterFilterTo = '';
+let lastHourlySample = 0;
 const FILL_TYPE = {
   liquidation: '強平', funding: '資金費', sl: '停損', tp: '止盈',
-  stop: '條件', taker: '吃單', maker: '掛單', limit: '限價', close: '平倉', open: '開倉',
+  stop: '條件', trail: '追蹤', taker: '吃單', maker: '掛單', limit: '限價', close: '平倉', open: '開倉',
 };
 const FILL_SIDE = { buy: '買', sell: '賣', long: '多', short: '空', funding: '資金費' };
 
@@ -124,6 +135,32 @@ function confirmTradeAction({ title, body, confirmLabel = '確認', danger = fal
       if (!a) return;
       el.remove();
       resolve(a === 'ok');
+    };
+  });
+}
+
+function formSheet({ title, fields, confirmLabel = '確認' }) {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.className = 'confirm-sheet';
+    const inputs = fields.map((f) => `<label class="field">${f.label}
+      <input id="fs_${f.id}" type="${f.type || 'text'}" value="${f.value ?? ''}" step="any" /></label>`).join('');
+    el.innerHTML = `<div class="card" role="dialog" aria-modal="true">
+      <h3>${title}</h3>
+      ${inputs}
+      <div class="side-actions">
+        <button type="button" class="btn ghost" data-a="cancel">取消</button>
+        <button type="button" class="btn accent" data-a="ok">${confirmLabel}</button>
+      </div></div>`;
+    document.body.appendChild(el);
+    el.onclick = (e) => {
+      const a = e.target.closest('[data-a]')?.dataset.a;
+      if (!a) return;
+      if (a === 'cancel') { el.remove(); resolve(null); return; }
+      const out = {};
+      for (const f of fields) out[f.id] = el.querySelector('#fs_' + f.id)?.value ?? '';
+      el.remove();
+      resolve(out);
     };
   });
 }
@@ -441,6 +478,7 @@ function updateTicker(t) {
   updatePreSummary();
   warnLiqProximity();
   refreshTicketHead();
+  if ($('#view-portfolio')?.classList.contains('active')) renderPortfolio();
   // live candle last
   if (candleSeries && last) {
     try {
@@ -468,6 +506,7 @@ function checkFunding(t) {
   );
   if (ev) {
     toast(`資金費 ${ev.paymentUsdt.toFixed(4)} USDT`);
+    sampleEquity();
     persist();
   }
 }
@@ -517,6 +556,7 @@ function updatePreSummary() {
   if ((ordType === 'stop_market' || ordType === 'stop_limit')
     && !(Number($('#triggerPrice').value) > 0)) canSubmit = false;
   if (ordType === 'stop_limit' && !(Number($('#limitPrice').value) > 0)) canSubmit = false;
+  if (ordType === 'stop_trail' && !(Number($('#trailPct')?.value) > 0)) canSubmit = false;
   if (!t || !(rawQty > 0) || !px) {
     el.textContent = challengeBlocksTrading()
       ? '排位賽已結束，請到「段位」頁結算'
@@ -603,9 +643,13 @@ function setQtyFromPct(pct) {
 function renderEquity() {
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const cls = snap.returnPct >= 0 ? 'up' : 'down';
+  const upnl = snap.equity - snap.wallet;
+  const upnlCls = upnl >= 0 ? 'up' : 'down';
   const deg = marks[market.getSymbol()] == null ? ' · 標記價降級' : '';
   $('#equityBar').innerHTML = `權益 <b class="mono">${snap.equity.toFixed(2)}</b>
+    · 錢包 ${snap.wallet.toFixed(2)}
     · 可用 ${snap.available.toFixed(2)}
+    · 未實現 <span class="${upnlCls}">${upnl >= 0 ? '+' : ''}${upnl.toFixed(2)}</span>
     · 收益 <span class="${cls}">${snap.returnPct >= 0 ? '+' : ''}${snap.returnPct.toFixed(2)}%</span>${deg}`;
 }
 
@@ -719,9 +763,12 @@ function renderPosTab() {
       </tr></thead><tbody>`
       + rows.map((o) => {
         const typeLab = o.ordType === 'stop_market' ? '條件市價'
-          : o.ordType === 'stop_limit' ? '條件限價' : '限價';
+          : o.ordType === 'stop_limit' ? '條件限價'
+          : o.ordType === 'stop_trail' ? `追蹤 ${o.trailPct}%` : '限價';
         const px = o.ordType === 'stop_market' ? `觸發 ${o.triggerPrice}`
-          : o.ordType === 'stop_limit' ? `觸發 ${o.triggerPrice} / 限 ${o.price}` : o.price;
+          : o.ordType === 'stop_limit' ? `觸發 ${o.triggerPrice} / 限 ${o.price}`
+          : o.ordType === 'stop_trail' ? `觸發 ${Number(o.triggerPrice).toFixed(2)} / 回撤 ${o.trailPct}%`
+          : o.price;
         const canAmend = o.ordType === 'limit' || o.ordType === 'stop_market' || o.ordType === 'stop_limit';
         return `<tr>
         <td>${new Date(o.createdAt).toLocaleTimeString()}</td>
@@ -749,8 +796,18 @@ function renderPosTab() {
       if (amend) amendOrderPrompt(amend.dataset.amend);
     };
   } else if (posTab === 'closed') {
-    const rows = [...(state.closedTrades || [])].reverse().slice(0, 100);
-    body.innerHTML = rows.length
+    const all = state.closedTrades || [];
+    const syms = [...new Set(all.map((t) => t.symbol))];
+    const rows = filterClosedTrades(all, {
+      sym: blotterFilterSym, from: blotterFilterFrom, to: blotterFilterTo,
+    }).slice().reverse().slice(0, 100);
+    body.innerHTML = `<div class="blotter-filters">
+      <label>合約 <select id="blSym"><option value="">全部</option>
+        ${syms.map((s) => `<option value="${s}" ${blotterFilterSym === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select></label>
+      <label>由 <input type="date" id="blFrom" value="${blotterFilterFrom}" /></label>
+      <label>至 <input type="date" id="blTo" value="${blotterFilterTo}" /></label>
+    </div>` + (rows.length
       ? `<table class="pos-table"><thead><tr>
         <th>平倉時間</th><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>出場</th>
         <th>已實現盈虧</th><th>費用</th><th>原因</th>
@@ -758,7 +815,7 @@ function renderPosTab() {
         + rows.map((t) => {
           const cls = t.pnlUsdt >= 0 ? 'up' : 'down';
           return `<tr>
-          <td>${new Date(t.closedAt).toLocaleString()}</td>
+          <td>${new Date(t.closedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
           <td>${t.symbol}</td>
           <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
           <td>${t.qty}</td><td>${Number(t.entry).toFixed(2)}</td><td>${Number(t.exit).toFixed(2)}</td>
@@ -766,34 +823,70 @@ function renderPosTab() {
           <td>${Number(t.feeUsdt || 0).toFixed(4)}</td>
           <td>${FILL_TYPE[t.reason] || t.reason || '平倉'}</td></tr>`;
         }).join('') + '</tbody></table>'
-      : '<p class="empty-hint">尚無已平倉紀錄 · 平倉後會顯示於此</p>';
+      : '<p class="empty-hint">尚無已平倉紀錄 · 平倉後會顯示於此</p>');
+    body.querySelector('#blSym')?.addEventListener('change', (e) => {
+      blotterFilterSym = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blFrom')?.addEventListener('change', (e) => {
+      blotterFilterFrom = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blTo')?.addEventListener('change', (e) => {
+      blotterFilterTo = e.target.value; renderPosTab();
+    });
   } else {
-    const fills = snap.fills;
-    body.innerHTML = fills.length
+    const allFills = state.account?.fills || [];
+    const syms = [...new Set(allFills.map((f) => f.symbol).filter(Boolean))];
+    const fills = allFills.filter((f) => {
+      if (blotterFilterSym && f.symbol !== blotterFilterSym) return false;
+      const k = dayKey(f.ts);
+      if (blotterFilterFrom && k < blotterFilterFrom) return false;
+      if (blotterFilterTo && k > blotterFilterTo) return false;
+      return true;
+    }).slice().reverse().slice(0, 100);
+    body.innerHTML = `<div class="blotter-filters">
+      <label>合約 <select id="blSym"><option value="">全部</option>
+        ${syms.map((s) => `<option value="${s}" ${blotterFilterSym === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select></label>
+      <label>由 <input type="date" id="blFrom" value="${blotterFilterFrom}" /></label>
+      <label>至 <input type="date" id="blTo" value="${blotterFilterTo}" /></label>
+    </div>` + (fills.length
       ? `<table class="pos-table"><thead><tr>
         <th>時間</th><th>合約</th><th>方向</th><th>類型</th><th>價格</th><th>數量</th><th>費用</th>
         </tr></thead><tbody>`
         + fills.map((f) => {
           const tag = FILL_TYPE[f.reason] || FILL_TYPE[f.liquidity] || f.liquidity || '—';
           const side = FILL_SIDE[f.side] || f.side;
-          return `<tr><td>${new Date(f.ts).toLocaleTimeString()}</td><td>${f.symbol}</td>
+          return `<tr><td>${new Date(f.ts).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td><td>${f.symbol}</td>
           <td>${side}</td><td>${tag}</td><td>${f.price}</td><td>${f.qty}</td>
           <td>${Number(f.feeUsdt || 0).toFixed(4)}</td></tr>`;
         }).join('')
         + '</tbody></table>'
-      : '<p class="empty-hint">尚無成交紀錄 · 成交後會顯示於此</p>';
+      : '<p class="empty-hint">尚無成交紀錄 · 成交後會顯示於此</p>');
+    body.querySelector('#blSym')?.addEventListener('change', (e) => {
+      blotterFilterSym = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blFrom')?.addEventListener('change', (e) => {
+      blotterFilterFrom = e.target.value; renderPosTab();
+    });
+    body.querySelector('#blTo')?.addEventListener('change', (e) => {
+      blotterFilterTo = e.target.value; renderPosTab();
+    });
   }
 }
 
-function editTpSl(sym) {
+async function editTpSl(sym) {
   const pos = state.account.positions[sym];
   if (!pos) return;
-  const tpIn = window.prompt(`止盈價（留空清除）目前 ${pos.tp ?? '—'}`, pos.tp ?? '');
-  if (tpIn === null) return;
-  const slIn = window.prompt(`停損價（留空清除）目前 ${pos.sl ?? '—'}`, pos.sl ?? '');
-  if (slIn === null) return;
-  const tp = tpIn.trim() === '' ? null : Number(tpIn);
-  const sl = slIn.trim() === '' ? null : Number(slIn);
+  const vals = await formSheet({
+    title: `改 TP／SL · ${sym}`,
+    fields: [
+      { id: 'tp', label: '止盈價（留空清除）', value: pos.tp ?? '' },
+      { id: 'sl', label: '停損價（留空清除）', value: pos.sl ?? '' },
+    ],
+  });
+  if (!vals) return;
+  const tp = vals.tp.trim() === '' ? null : Number(vals.tp);
+  const sl = vals.sl.trim() === '' ? null : Number(vals.sl);
   if (tp != null && !(tp > 0)) return toast('止盈價無效');
   if (sl != null && !(sl > 0)) return toast('停損價無效');
   if (pos.side === 'long') {
@@ -809,16 +902,21 @@ function editTpSl(sym) {
   toast(`已更新 ${sym} 止盈／停損`);
 }
 
-function addMarginPrompt(sym) {
+async function addMarginPrompt(sym) {
   const pos = state.account.positions[sym];
   if (!pos) return;
   const cur = Number(pos.extraMarginUsdt) || 0;
-  const raw = window.prompt(
-    `調整逐倉保證金 USDT（${sym}）\n正數追加、負數減少；目前額外保證金 ${cur.toFixed(2)}`,
-    '100',
-  );
-  if (raw == null) return;
-  const amt = Number(raw);
+  const vals = await formSheet({
+    title: `調保證金 · ${sym}`,
+    fields: [{
+      id: 'amt',
+      label: `變動 USDT（正數追加／負數減少；目前額外 ${cur.toFixed(2)}）`,
+      value: '100',
+      type: 'number',
+    }],
+  });
+  if (!vals) return;
+  const amt = Number(vals.amt);
   if (!Number.isFinite(amt) || amt === 0) return toast('金額無效');
   const r = adjustIsolatedMargin(state.account, sym, amt, displayMarks());
   if (!r.ok) return toast('調保證金失敗：' + r.reason);
@@ -828,10 +926,15 @@ function addMarginPrompt(sym) {
   toast(amt > 0 ? `已追加 ${amt} USDT` : `已減少 ${-amt} USDT`);
 }
 
-function adjLevPrompt(sym) {
+async function adjLevPrompt(sym) {
   const pos = state.account.positions[sym];
   if (!pos) return;
-  const lev = Number(window.prompt(`調整槓桿（目前 ${pos.leverage}x，最高 50x）`, String(pos.leverage)));
+  const vals = await formSheet({
+    title: `調槓桿 · ${sym}`,
+    fields: [{ id: 'lev', label: `槓桿（目前 ${pos.leverage}x，最高 50x）`, value: String(pos.leverage), type: 'number' }],
+  });
+  if (!vals) return;
+  const lev = Number(vals.lev);
   if (!(lev >= 1 && lev <= 50)) return toast('槓桿無效');
   const r = setPositionLeverage(state.account, sym, lev);
   if (!r.ok) return toast('調整失敗：' + r.reason);
@@ -842,21 +945,31 @@ function adjLevPrompt(sym) {
   toast(`已調槓桿至 ${lev}x`);
 }
 
-function amendOrderPrompt(orderId) {
+async function amendOrderPrompt(orderId) {
   const o = state.account.orders.find((x) => x.id === orderId && x.status === 'open');
   if (!o) return;
-  const patch = {};
+  const fields = [];
   if (o.ordType === 'stop_market' || o.ordType === 'stop_limit') {
-    const trig = Number(window.prompt('新觸發價', String(o.triggerPrice)));
+    fields.push({ id: 'triggerPrice', label: '觸發價', value: o.triggerPrice, type: 'number' });
+  }
+  if (o.ordType === 'limit' || o.ordType === 'stop_limit') {
+    fields.push({ id: 'price', label: '限價', value: o.price, type: 'number' });
+  }
+  fields.push({ id: 'qty', label: '數量', value: o.qty, type: 'number' });
+  const vals = await formSheet({ title: '修改委託', fields });
+  if (!vals) return;
+  const patch = {};
+  if (vals.triggerPrice != null) {
+    const trig = Number(vals.triggerPrice);
     if (!(trig > 0)) return toast('觸發價無效');
     patch.triggerPrice = trig;
   }
-  if (o.ordType === 'limit' || o.ordType === 'stop_limit') {
-    const price = Number(window.prompt('新限價', String(o.price)));
+  if (vals.price != null && fields.some((f) => f.id === 'price')) {
+    const price = Number(vals.price);
     if (!(price > 0)) return toast('限價無效');
     patch.price = price;
   }
-  const qty = Number(window.prompt('新數量', String(o.qty)));
+  const qty = Number(vals.qty);
   if (!(qty > 0)) return toast('數量無效');
   patch.qty = qty;
   const r = amendOrder(state.account, orderId, patch);
@@ -929,6 +1042,7 @@ async function submitOrder(side) {
       ? Number($('#limitPrice').value) : undefined,
     triggerPrice: (ordType === 'stop_market' || ordType === 'stop_limit')
       ? Number($('#triggerPrice').value) : undefined,
+    trailPct: ordType === 'stop_trail' ? Number($('#trailPct')?.value) : undefined,
     tif: ordType === 'limit' ? ($('#tif')?.value || 'GTC') : 'GTC',
     leverage: lev,
     reduceOnly,
@@ -955,9 +1069,11 @@ async function submitOrder(side) {
   const px = r.fillPrice ?? entryPx ?? input.triggerPrice;
   const fee = r.feeUsdt ?? 0;
   const sideLab = side === 'long' ? '做多' : '做空';
-  toast((ordType === 'stop_market' || ordType === 'stop_limit')
-    ? `已掛條件單 ${sideLab} 觸發 ${input.triggerPrice}`
-    : `${sideLab} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
+  toast(ordType === 'stop_trail'
+    ? `已掛追蹤止損 ${sideLab} 回撤 ${input.trailPct}%`
+    : (ordType === 'stop_market' || ordType === 'stop_limit')
+      ? `已掛條件單 ${sideLab} 觸發 ${input.triggerPrice}`
+      : `${sideLab} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
   closeDrawer();
 }
 
@@ -1085,61 +1201,337 @@ async function closeAllPositions() {
   toast('已全部平倉');
 }
 
-function equityCurveSvg(samples) {
-  if (!samples?.length) {
-    return '<p style="color:var(--muted)">交易後會顯示權益曲線</p>';
+function equityCurveSvg(samples, rangeKey = '30') {
+  const series = pickEquitySeries(samples, rangeKey);
+  if (!series.length) {
+    return '<p class="empty-hint">交易後會顯示權益曲線</p>';
   }
-  const vals = samples.map((s) => s.equity);
+  const vals = series.map((s) => s.equity);
   const min = Math.min(...vals);
   const max = Math.max(...vals);
-  const w = 320; const h = 120; const pad = 8;
+  const w = 640; const h = 180; const padL = 48; const padR = 12; const padT = 12; const padB = 28;
   const span = Math.max(1e-9, max - min);
-  const pts = vals.map((v, i) => {
-    const x = pad + (i / Math.max(1, vals.length - 1)) * (w - pad * 2);
-    const y = h - pad - ((v - min) / span) * (h - pad * 2);
+  const t0 = series[0].t;
+  const t1 = series[series.length - 1].t;
+  const tSpan = Math.max(1, t1 - t0);
+  const pts = series.map((s) => {
+    const x = padL + ((s.t - t0) / tSpan) * (w - padL - padR);
+    const y = padT + (1 - (s.equity - min) / span) * (h - padT - padB);
     return `${x},${y}`;
   }).join(' ');
   const up = vals[vals.length - 1] >= vals[0];
-  return `<svg width="100%" viewBox="0 0 ${w} ${h}" class="equity-svg" aria-label="權益曲線">
-    <polyline fill="none" stroke="${up ? '#0ECB81' : '#F6465D'}" stroke-width="2" points="${pts}"/>
-  </svg>`;
+  const yMax = max.toFixed(0);
+  const yMin = min.toFixed(0);
+  const d0 = dayKey(t0);
+  const d1 = dayKey(t1);
+  return `<div class="equity-chart-wrap">
+    <svg width="100%" viewBox="0 0 ${w} ${h}" class="equity-svg" role="img"
+      aria-label="權益曲線 ${d0} 至 ${d1}，${yMin} 至 ${yMax} USDT">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#1E2833"/>
+      <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#1E2833"/>
+      <text x="4" y="${padT + 4}" fill="#8B9AAB" font-size="10">${yMax}</text>
+      <text x="4" y="${h - padB}" fill="#8B9AAB" font-size="10">${yMin}</text>
+      <text x="${padL}" y="${h - 8}" fill="#8B9AAB" font-size="10">${d0}</text>
+      <text x="${w - padR}" y="${h - 8}" fill="#8B9AAB" font-size="10" text-anchor="end">${d1}</text>
+      <polyline fill="none" stroke="${up ? '#0ECB81' : '#F6465D'}" stroke-width="2" points="${pts}"/>
+      ${series.map((s) => {
+        const x = padL + ((s.t - t0) / tSpan) * (w - padL - padR);
+        const y = padT + (1 - (s.equity - min) / span) * (h - padT - padB);
+        return `<circle cx="${x}" cy="${y}" r="3" fill="${up ? '#0ECB81' : '#F6465D'}">
+          <title>${dayKey(s.t)} ${Number(s.equity).toFixed(2)} USDT</title></circle>`;
+      }).join('')}
+    </svg></div>`;
+}
+
+function monthStart(d = new Date()) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function taipeiFirstWeekday(y, m) {
+  // m is 1-based; find UTC instant whose Taipei date is y-m-01, then weekday in Taipei.
+  let probe = Date.UTC(y, m - 1, 1, 0, 0, 0);
+  const want = `${y}-${String(m).padStart(2, '0')}-01`;
+  for (let i = 0; i < 36; i++) {
+    if (dayKey(probe) === want) break;
+    probe += 3600000;
+  }
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Taipei', weekday: 'short',
+  }).formatToParts(new Date(probe));
+  const wd = parts.find((p) => p.type === 'weekday')?.value;
+  return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[wd] ?? 0;
+}
+
+function fmtPnl(n) {
+  const v = Number(n) || 0;
+  return (v >= 0 ? '+' : '') + v.toFixed(2);
 }
 
 function renderPortfolio() {
   const el = $('#view-portfolio');
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const trades = closedTrades();
-  const score = abilityScore({
-    trades, equitySamples: state.equitySamples, startEquity: state.settings.startBalance,
+  const fills = state.account?.fills || [];
+  const topups = (state.account?.events || []).filter((e) => e.type === 'topup');
+  const ledger = buildDailyLedger({
+    trades,
+    fills,
+    topups,
+    equitySamples: state.equitySamples,
+    startEquity: state.settings.startBalance,
   });
+  // Live-update today: open = prior calendar day close (or startBalance); close = live equity.
+  const todayKey = dayKey(Date.now());
+  const ymd = taipeiYMD();
+  const yest = new Date(Date.UTC(ymd.y, ymd.m - 1, ymd.d - 1, 12, 0, 0));
+  const yestKey = dayKey(yest.getTime());
+  let prevClose = state.settings.startBalance;
+  if (ledger.has(yestKey) && ledger.get(yestKey).equityClose != null) {
+    prevClose = ledger.get(yestKey).equityClose;
+  } else {
+    const earlier = [...ledger.keys()].sort().reverse().find((k) => k < todayKey);
+    if (earlier != null && ledger.get(earlier).equityClose != null) {
+      prevClose = ledger.get(earlier).equityClose;
+    }
+  }
+  let todayRow = ledger.get(todayKey);
+  if (!todayRow) {
+    todayRow = {
+      key: todayKey, realized: 0, funding: 0, openFees: 0, closeFees: 0,
+      transfer: 0, trades: [], equityOpen: prevClose, equityClose: snap.equity, pnl: 0,
+    };
+    ledger.set(todayKey, todayRow);
+  }
+  todayRow.equityOpen = prevClose;
+  todayRow.equityClose = snap.equity;
+  todayRow.pnl = todayRow.equityClose - todayRow.equityOpen - (todayRow.transfer || 0);
+  const stats = periodPnLStats(ledger);
+  const costs = aggregateCosts(fills);
   const dd = maxDrawdownPct(state.equitySamples || []);
   const sh = sharpeLike(state.equitySamples || []);
   const wins = trades.filter((t) => t.pnlUsdt >= 0).length;
   const wr = trades.length ? (wins / trades.length * 100) : 0;
-  el.innerHTML = `<div class="page-head"><h1>資產組合</h1>
-    <p>權益曲線、風險指標與已平倉紀錄（此頁不下單）。</p></div>
-    <div class="panel-block mono">
-      權益 ${snap.equity.toFixed(2)} USDT · 錢包 ${snap.wallet.toFixed(2)} ·
-      收益 ${snap.returnPct.toFixed(2)}% · 已平倉 ${trades.length} 筆
-      ${score.ok ? ` · 能力分 ${score.score.toFixed(1)}（${rankTier(score.score)}）` : ' · 樣本不足'}
-      · 段位 ${formatRank(state.ladder)}
-    </div>
-    <div class="panel-block">
-      <h3>權益曲線</h3>
-      ${equityCurveSvg(state.equitySamples)}
-    </div>
-    <div class="panel-block mono">
-      <h3>風險指標</h3>
-      最大回撤 ${dd.toFixed(2)}% · Sharpe-like ${sh == null ? '—' : sh.toFixed(2)} ·
-      勝率 ${trades.length ? wr.toFixed(1) + '%' : '—'}
-    </div>
-    <div class="panel-block">
-      <h3>最近平倉</h3>
-      ${trades.slice(-20).reverse().map((t) =>
-        `<div class="lb-row"><span>${t.symbol} ${t.side === 'long' ? '多' : '空'}</span>
-        <span class="${t.pnlUsdt >= 0 ? 'up' : 'down'}">${t.pnlUsdt >= 0 ? '+' : ''}${t.pnlUsdt.toFixed(2)}</span></div>`
-      ).join('') || '<p style="color:var(--muted)">尚未平倉</p>'}
+  const upnl = snap.equity - snap.wallet;
+  const marginUsed = Number(snap.usedMargin) || 0;
+  if (!portfolioMonth) {
+    const t = taipeiYMD();
+    portfolioMonth = { y: t.y, m: t.m };
+  }
+  const y = portfolioMonth.y;
+  const m = portfolioMonth.m;
+  const firstDow = taipeiFirstWeekday(y, m);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const monthLabel = `${y}年${m}月`;
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push('<div class="pnl-day empty"></div>');
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const row = ledger.get(key);
+    const pnl = row?.pnl ?? 0;
+    const has = !!row;
+    const cls = !has ? '' : pnl > 0 ? 'up' : pnl < 0 ? 'down' : 'flat';
+    const sel = portfolioDay === key ? ' selected' : '';
+    const amt = has ? fmtPnl(pnl) : '—';
+    cells.push(`<button type="button" class="pnl-day ${cls}${sel}" data-day="${key}"
+      aria-label="${m}月${day}日 盈虧 ${amt} USDT">
+      <span class="pnl-date">${day}</span>
+      <span class="pnl-amt">${amt}</span>
+    </button>`);
+  }
+
+  const dayDetail = portfolioDay ? ledger.get(portfolioDay) : null;
+  const dayTrades = dayDetail?.trades || [];
+  const symSet = [...new Set(trades.map((t) => t.symbol))];
+  const filtered = filterClosedTrades(trades, {
+    sym: portfolioFilterSym,
+    day: portfolioDay || '',
+    from: portfolioFilterFrom,
+    to: portfolioFilterTo,
+  }).slice().reverse();
+
+  const posRows = snap.positions;
+  const totalNotional = posRows.reduce((s, p) => s + (p.notional || 0), 0) || 1;
+  const alloc = posRows.map((p) => {
+    const pct = (p.notional / totalNotional) * 100;
+    return `<div class="alloc-row">
+      <span>${p.symbol} ${p.side === 'long' ? '多' : '空'}</span>
+      <span class="alloc-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
+      <span>${p.notional.toFixed(2)}（${pct.toFixed(1)}%）</span>
     </div>`;
+  }).join('') || '<p class="empty-hint">目前無持倉</p>';
+
+  const rangeSeg = ['7', '30', '90', 'all'].map((k) => {
+    const lab = k === 'all' ? '全部' : k + '日';
+    return `<button type="button" data-range="${k}" class="${portfolioRange === k ? 'active' : ''}">${lab}</button>`;
+  }).join('');
+
+  el.innerHTML = `<div class="page-head"><h1>資產</h1>
+    <p>權益總覽、每日盈虧日曆與詳細曲線（此頁不下單）。</p></div>
+
+    <div class="asset-overview-grid">
+      <div class="asset-card"><span>總權益</span><b class="mono">${snap.equity.toFixed(2)}</b></div>
+      <div class="asset-card"><span>錢包餘額</span><b class="mono">${snap.wallet.toFixed(2)}</b></div>
+      <div class="asset-card"><span>可用</span><b class="mono">${snap.available.toFixed(2)}</b></div>
+      <div class="asset-card"><span>保證金占用</span><b class="mono">${marginUsed.toFixed(2)}</b></div>
+      <div class="asset-card"><span>未實現盈虧</span>
+        <b class="mono ${upnl >= 0 ? 'up' : 'down'}">${fmtPnl(upnl)}</b></div>
+    </div>
+
+    <div class="pnl-hero panel-block">
+      <div>
+        <div class="muted">今日盈虧（含未實現變動／已扣除補倉）</div>
+        <div class="pnl-hero-val ${stats.today >= 0 ? 'up' : 'down'}">${fmtPnl(stats.today)} USDT</div>
+      </div>
+      <div class="pnl-period mono">
+        <div>7日 <span class="${stats.d7 >= 0 ? 'up' : 'down'}">${fmtPnl(stats.d7)}</span></div>
+        <div>30日 <span class="${stats.d30 >= 0 ? 'up' : 'down'}">${fmtPnl(stats.d30)}</span></div>
+        <div>累計 <span class="${stats.cumulative >= 0 ? 'up' : 'down'}">${fmtPnl(stats.cumulative)}</span></div>
+        <div>累計收益 ${snap.returnPct.toFixed(2)}%</div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>每日盈虧日曆</h3>
+        <div class="month-nav">
+          <button type="button" id="calPrev" aria-label="上月">‹</button>
+          <span class="mono">${monthLabel}</span>
+          <button type="button" id="calNext" aria-label="下月">›</button>
+        </div>
+      </div>
+      <div class="pnl-cal-dow"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+      <div class="pnl-calendar">${cells.join('')}</div>
+      <p class="muted" style="font-size:11px;margin:8px 0 0">點選日期可看當日明細。日界線：Asia/Taipei。</p>
+      ${dayDetail ? `<div class="day-detail mono">
+        <strong>${portfolioDay}</strong>
+        當日盈虧 <span class="${dayDetail.pnl >= 0 ? 'up' : 'down'}">${fmtPnl(dayDetail.pnl)}</span>
+        · 已實現 ${fmtPnl(dayDetail.realized)}
+        · 資金費 ${fmtPnl(dayDetail.funding)}
+        · 開倉費 ${dayDetail.openFees.toFixed(2)}
+        · 平倉費 ${dayDetail.closeFees.toFixed(2)}
+        · 補倉 ${dayDetail.transfer.toFixed(2)}
+        · 成交 ${dayTrades.length} 筆
+      </div>` : ''}
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>權益曲線</h3>
+        <div class="seg mini-seg" id="eqRangeSeg">${rangeSeg}</div>
+      </div>
+      ${equityCurveSvg(state.equitySamples, portfolioRange)}
+    </div>
+
+    <div class="asset-metrics">
+      <div class="asset-card"><span>最大回撤</span><b>${dd.toFixed(2)}%</b></div>
+      <div class="asset-card"><span>夏普近似值</span><b>${sh == null ? '—' : sh.toFixed(2)}</b></div>
+      <div class="asset-card"><span>勝率</span><b>${trades.length ? wr.toFixed(1) + '%' : '—'}</b></div>
+      <div class="asset-card"><span>手續費合計</span><b>${costs.fees.toFixed(2)}</b></div>
+      <div class="asset-card"><span>資金費合計</span><b class="${costs.funding >= 0 ? 'up' : 'down'}">${fmtPnl(costs.funding)}</b></div>
+    </div>
+
+    <div class="panel-block">
+      <h3>持倉佔比</h3>
+      ${alloc}
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>當前持倉</h3>
+        <button type="button" class="text-btn" data-go-trade>前往交易</button>
+      </div>
+      ${posRows.length ? `<table class="pos-table"><thead><tr>
+        <th>合約</th><th>方向</th><th>數量</th><th>價值</th><th>未實現</th><th>報酬率</th>
+        </tr></thead><tbody>` + posRows.map((p) => `<tr>
+          <td>${p.symbol}</td>
+          <td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? '多' : '空'}</td>
+          <td>${p.qty}</td><td>${p.notional.toFixed(2)}</td>
+          <td class="${p.upnl >= 0 ? 'up' : 'down'}">${fmtPnl(p.upnl)}</td>
+          <td class="${p.roiPct >= 0 ? 'up' : 'down'}">${fmtPnl(p.roiPct)}%</td>
+        </tr>`).join('') + '</tbody></table>'
+        : '<p class="empty-hint">尚無持倉 · <button type="button" class="text-btn" data-go-trade>前往交易</button></p>'}
+    </div>
+
+    <div class="panel-block">
+      <div class="panel-head">
+        <h3>已平倉紀錄</h3>
+        <label class="filter-sym">合約
+          <select id="pfSymFilter">
+            <option value="">全部</option>
+            ${symSet.map((s) => `<option value="${s}" ${portfolioFilterSym === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </label>
+        <label class="filter-sym">由 <input type="date" id="pfFrom" value="${portfolioFilterFrom}" /></label>
+        <label class="filter-sym">至 <input type="date" id="pfTo" value="${portfolioFilterTo}" /></label>
+        <button type="button" class="btn ghost" id="btnExportStmt" style="width:auto">匯出日結 CSV</button>
+      </div>
+      ${filtered.length ? `<table class="pos-table"><thead><tr>
+        <th>時間</th><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>出場</th>
+        <th>已實現</th><th>費用</th>
+        </tr></thead><tbody>` + filtered.slice(0, 80).map((t) => `<tr>
+          <td>${new Date(t.closedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
+          <td>${t.symbol}</td>
+          <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
+          <td>${t.qty}</td><td>${Number(t.entry).toFixed(2)}</td><td>${Number(t.exit).toFixed(2)}</td>
+          <td class="${t.pnlUsdt >= 0 ? 'up' : 'down'}">${fmtPnl(t.pnlUsdt)}</td>
+          <td>${Number(t.feeUsdt || 0).toFixed(4)}</td>
+        </tr>`).join('') + '</tbody></table>'
+        : '<p class="empty-hint">尚無符合條件的已平倉紀錄</p>'}
+    </div>`;
+
+  el.onclick = (e) => {
+    if (e.target.closest('[data-go-trade]')) {
+      showView('trade');
+      return;
+    }
+    const dayBtn = e.target.closest('[data-day]');
+    if (dayBtn) {
+      portfolioDay = portfolioDay === dayBtn.dataset.day ? null : dayBtn.dataset.day;
+      renderPortfolio();
+      return;
+    }
+    if (e.target.closest('#calPrev')) {
+      let nm = m - 1; let ny = y;
+      if (nm < 1) { nm = 12; ny -= 1; }
+      portfolioMonth = { y: ny, m: nm };
+      renderPortfolio();
+      return;
+    }
+    if (e.target.closest('#calNext')) {
+      let nm = m + 1; let ny = y;
+      if (nm > 12) { nm = 1; ny += 1; }
+      portfolioMonth = { y: ny, m: nm };
+      renderPortfolio();
+      return;
+    }
+    const rb = e.target.closest('#eqRangeSeg [data-range]');
+    if (rb) {
+      portfolioRange = rb.dataset.range;
+      renderPortfolio();
+      return;
+    }
+    if (e.target.closest('#btnExportStmt')) {
+      const csv = exportDailyStatementCsv(ledger);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'apex-daily-statement.csv';
+      a.click();
+      toast('已匯出日結 CSV');
+    }
+  };
+  $('#pfSymFilter')?.addEventListener('change', (e) => {
+    portfolioFilterSym = e.target.value;
+    renderPortfolio();
+  });
+  $('#pfFrom')?.addEventListener('change', (e) => {
+    portfolioFilterFrom = e.target.value;
+    renderPortfolio();
+  });
+  $('#pfTo')?.addEventListener('change', (e) => {
+    portfolioFilterTo = e.target.value;
+    renderPortfolio();
+  });
 }
 
 function radarSvg(dims) {
@@ -1300,6 +1692,7 @@ function renderRank() {
     state.closedTrades = [];
     state.equitySamples = [{ t: Date.now(), equity: 50000 }];
     state.challenge = startChallenge();
+    sampleEquity();
     persist();
     toast('排位賽開始');
     showView('trade');
@@ -1487,8 +1880,9 @@ function renderSettings() {
     if ($('#resetConfirm').value !== 'RESET') return toast('請輸入 RESET');
     state.account = resetAccount(state.settings.startBalance);
     state.closedTrades = [];
-    state.equitySamples = [];
+    state.equitySamples = [{ t: Date.now(), equity: state.settings.startBalance }];
     state.challenge = null;
+    sampleEquity();
     persist();
     renderEquity();
     renderPosTab();
@@ -1523,10 +1917,12 @@ function syncOrdTypeUi() {
   $$('#ordTypeSeg button').forEach((x) => x.classList.toggle('active', x.dataset.type === ordType));
   const showLimitPx = ordType === 'limit' || ordType === 'stop_limit';
   const showTrig = ordType === 'stop_market' || ordType === 'stop_limit';
+  const showTrail = ordType === 'stop_trail';
   $$('.limit-only').forEach((x) => x.classList.toggle('hidden', !showLimitPx));
   const tifField = $('#tif')?.closest('label, .field');
   if (tifField) tifField.classList.toggle('hidden', ordType !== 'limit');
   $$('.cond-only').forEach((x) => x.classList.toggle('hidden', !showTrig));
+  $$('.trail-only').forEach((x) => x.classList.toggle('hidden', !showTrail));
 }
 
 function applyRoiHelper(kind, pct) {
@@ -1561,9 +1957,14 @@ function wireUi() {
     state.ui.levBySymbol[market.getSymbol()] = levEffective();
     updatePreSummary();
   };
-  $('#levBadge')?.addEventListener('click', () => {
-    const next = Number(window.prompt('設定槓桿（1–50）', String(levEffective())));
-    if (!(next >= 1 && next <= 50)) return;
+  $('#levBadge')?.addEventListener('click', async () => {
+    const vals = await formSheet({
+      title: '設定槓桿',
+      fields: [{ id: 'lev', label: '槓桿 1–50（最高 50x）', value: String(levEffective()), type: 'number' }],
+    });
+    if (!vals) return;
+    const next = Number(vals.lev);
+    if (!(next >= 1 && next <= 50)) return toast('槓桿無效');
     $('#leverage').value = String(next);
     $('#leverage').dispatchEvent(new Event('input'));
   });
@@ -1667,6 +2068,19 @@ function wireUi() {
   refreshRankPill();
   $('#levVal').textContent = levEffective() + 'x';
 
+  if (!state.equitySamples?.length && state.account) {
+    state.equitySamples = [{ t: Date.now(), equity: state.settings.startBalance }];
+  }
+  // Hourly equity snapshot so calendar day boundaries stay honest.
+  setInterval(() => {
+    const now = Date.now();
+    if (now - lastHourlySample < 55 * 60 * 1000) return;
+    lastHourlySample = now;
+    if (state.ui.entered) {
+      sampleEquity();
+      persist();
+    }
+  }, 60_000);
   if (loaded.recovered) toast('已從備份或預設資料恢復');
   if (state.ui.entered) enterApp();
   drive.boot();
