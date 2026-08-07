@@ -103,6 +103,16 @@ assert.equal(rowA.realized, 60);
 assert.equal(rowA.funding, -2);
 assert.equal(rowA.transfer, 1000);
 assert.ok(Math.abs(rowA.pnl - (rowA.equityClose - rowA.equityOpen - rowA.transfer)) < 1e-9);
+// Single post-trade sample: open = prior close, not the lone sample itself.
+const dayLone = dayKey(1_800_000_000_000);
+const lone = buildDailyLedger({
+  trades: [{ id: 'L', pnlUsdt: 80, feeUsdt: 1, closedAt: 1_800_000_000_000 }],
+  equitySamples: [{ t: 1_800_000_000_000 + 60_000, equity: 50080 }],
+  startEquity: 50000,
+});
+assert.equal(lone.get(dayLone).equityOpen, 50000);
+assert.equal(lone.get(dayLone).equityClose, 50080);
+assert.ok(Math.abs(lone.get(dayLone).pnl - 80) < 1e-9);
 const costs = aggregateCosts([
   { reason: 'funding', feeUsdt: -3 },
   { reason: 'open', feeUsdt: 1 },

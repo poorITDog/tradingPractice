@@ -213,7 +213,10 @@ async function pollOffSymbolRisk() {
         }
       }
       if (t.fundingRate != null) {
-        settleFunding(state.account, sym, t.markApprox ? t.last : t.mark, t.fundingRate, now, t.nextFundingTime);
+        const fundEv = settleFunding(
+          state.account, sym, t.markApprox ? t.last : t.mark, t.fundingRate, now, t.nextFundingTime,
+        );
+        if (fundEv) sampleEquity();
       }
     } catch (_) { /* optional */ }
   }
@@ -1224,8 +1227,12 @@ function equityCurveSvg(samples, rangeKey = '30') {
   const yMin = min.toFixed(0);
   const d0 = dayKey(t0);
   const d1 = dayKey(t1);
-  return `<div class="equity-chart-wrap">
-    <svg width="100%" viewBox="0 0 ${w} ${h}" class="equity-svg" role="img"
+  const last = series[series.length - 1];
+  return `<div class="equity-chart-wrap" id="eqChartWrap"
+      data-series="${encodeURIComponent(JSON.stringify(series.map((s) => ({ t: s.t, equity: s.equity }))))}"
+      data-pad-l="${padL}" data-pad-r="${padR}" data-w="${w}">
+    <div class="equity-tip mono" id="eqTip">${dayKey(last.t)} · ${Number(last.equity).toFixed(2)} USDT</div>
+    <svg width="100%" viewBox="0 0 ${w} ${h}" class="equity-svg" id="eqSvg" role="img"
       aria-label="權益曲線 ${d0} 至 ${d1}，${yMin} 至 ${yMax} USDT">
       <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#1E2833"/>
       <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#1E2833"/>
@@ -1234,13 +1241,91 @@ function equityCurveSvg(samples, rangeKey = '30') {
       <text x="${padL}" y="${h - 8}" fill="#8B9AAB" font-size="10">${d0}</text>
       <text x="${w - padR}" y="${h - 8}" fill="#8B9AAB" font-size="10" text-anchor="end">${d1}</text>
       <polyline fill="none" stroke="${up ? '#0ECB81' : '#F6465D'}" stroke-width="2" points="${pts}"/>
-      ${series.map((s) => {
-        const x = padL + ((s.t - t0) / tSpan) * (w - padL - padR);
-        const y = padT + (1 - (s.equity - min) / span) * (h - padT - padB);
-        return `<circle cx="${x}" cy="${y}" r="3" fill="${up ? '#0ECB81' : '#F6465D'}">
-          <title>${dayKey(s.t)} ${Number(s.equity).toFixed(2)} USDT</title></circle>`;
-      }).join('')}
+      <line id="eqCross" x1="0" y1="${padT}" x2="0" y2="${h - padB}" stroke="#8B9AAB" stroke-width="1"
+        stroke-dasharray="3 3" opacity="0"/>
+      <circle id="eqDot" cx="0" cy="0" r="4" fill="${up ? '#0ECB81' : '#F6465D'}" opacity="0"/>
     </svg></div>`;
+}
+
+// Bind pointer/touch tip for equity curve (exchange-style crosshair).
+function bindEquityChartTip() {
+  const wrap = $('#eqChartWrap');
+  const tip = $('#eqTip');
+  const svg = $('#eqSvg');
+  if (!wrap || !tip || !svg) return;
+  let series;
+  try { series = JSON.parse(decodeURIComponent(wrap.dataset.series || '')); } catch (_) { return; }
+  if (!series?.length) return;
+  const padL = Number(wrap.dataset.padL) || 48;
+  const padR = Number(wrap.dataset.padR) || 12;
+  const vbW = Number(wrap.dataset.w) || 640;
+  const t0 = series[0].t;
+  const t1 = series[series.length - 1].t;
+  const tSpan = Math.max(1, t1 - t0);
+  const vals = series.map((s) => s.equity);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = Math.max(1e-9, max - min);
+  const padT = 12; const padB = 28; const h = 180;
+  const showAt = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    const xSvg = ((clientX - rect.left) / Math.max(1, rect.width)) * vbW;
+    const clamped = Math.min(vbW - padR, Math.max(padL, xSvg));
+    const t = t0 + ((clamped - padL) / (vbW - padL - padR)) * tSpan;
+    let best = series[0]; let bestD = Math.abs(best.t - t);
+    for (const s of series) {
+      const d = Math.abs(s.t - t);
+      if (d < bestD) { best = s; bestD = d; }
+    }
+    const x = padL + ((best.t - t0) / tSpan) * (vbW - padL - padR);
+    const y = padT + (1 - (best.equity - min) / span) * (h - padT - padB);
+    const cross = $('#eqCross');
+    const dot = $('#eqDot');
+    if (cross) { cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('opacity', '1'); }
+    if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('opacity', '1'); }
+    tip.textContent = `${dayKey(best.t)} · ${Number(best.equity).toFixed(2)} USDT`;
+  };
+  const onMove = (e) => {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    if (x != null) showAt(x);
+  };
+  svg.addEventListener('pointermove', onMove);
+  svg.addEventListener('touchmove', onMove, { passive: true });
+  svg.addEventListener('click', onMove);
+}
+
+function openDayPnlSheet(day, row) {
+  if (!row) return;
+  const trades = row.trades || [];
+  const el = document.createElement('div');
+  el.className = 'confirm-sheet day-pnl-sheet';
+  const tradeRows = trades.length
+    ? `<table class="pos-table day-sheet-table"><thead><tr>
+        <th>時間</th><th>合約</th><th>方向</th><th>數量</th><th>已實現</th>
+      </tr></thead><tbody>${trades.map((t) => `<tr>
+        <td>${new Date(t.closedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })}</td>
+        <td>${t.symbol || '—'}</td>
+        <td class="${t.side === 'long' ? 'up' : 'down'}">${t.side === 'long' ? '多' : '空'}</td>
+        <td>${t.qty ?? '—'}</td>
+        <td class="${(t.pnlUsdt || 0) >= 0 ? 'up' : 'down'}">${fmtPnl(t.pnlUsdt)}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<p class="empty-hint">當日無平倉成交</p>';
+  el.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${day} 盈虧明細">
+    <h3>${day} 盈虧明細</h3>
+    <div class="day-sheet-sum mono">
+      <div>當日盈虧 <span class="${row.pnl >= 0 ? 'up' : 'down'}">${fmtPnl(row.pnl)}</span></div>
+      <div>已實現 ${fmtPnl(row.realized)} · 資金費 ${fmtPnl(row.funding)}</div>
+      <div>開倉費 ${Number(row.openFees).toFixed(2)} · 平倉費 ${Number(row.closeFees).toFixed(2)}</div>
+      <div>補倉 ${Number(row.transfer).toFixed(2)} · 開盤 ${Number(row.equityOpen).toFixed(2)} → 收盤 ${Number(row.equityClose).toFixed(2)}</div>
+    </div>
+    ${tradeRows}
+    <div class="side-actions" style="margin-top:12px">
+      <button type="button" class="btn accent" data-a="ok" style="width:100%">關閉</button>
+    </div></div>`;
+  document.body.appendChild(el);
+  el.onclick = (e) => {
+    if (e.target === el || e.target.closest('[data-a="ok"]')) el.remove();
+  };
 }
 
 function monthStart(d = new Date()) {
@@ -1339,8 +1424,8 @@ function renderPortfolio() {
     </button>`);
   }
 
-  const dayDetail = portfolioDay ? ledger.get(portfolioDay) : null;
-  const dayTrades = dayDetail?.trades || [];
+  // Drop stale day filter if that day has no ledger row (e.g. empty cell / month change).
+  if (portfolioDay && !ledger.has(portfolioDay)) portfolioDay = null;
   const symSet = [...new Set(trades.map((t) => t.symbol))];
   const filtered = filterClosedTrades(trades, {
     sym: portfolioFilterSym,
@@ -1401,17 +1486,7 @@ function renderPortfolio() {
       </div>
       <div class="pnl-cal-dow"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
       <div class="pnl-calendar">${cells.join('')}</div>
-      <p class="muted" style="font-size:11px;margin:8px 0 0">點選日期可看當日明細。日界線：Asia/Taipei。</p>
-      ${dayDetail ? `<div class="day-detail mono">
-        <strong>${portfolioDay}</strong>
-        當日盈虧 <span class="${dayDetail.pnl >= 0 ? 'up' : 'down'}">${fmtPnl(dayDetail.pnl)}</span>
-        · 已實現 ${fmtPnl(dayDetail.realized)}
-        · 資金費 ${fmtPnl(dayDetail.funding)}
-        · 開倉費 ${dayDetail.openFees.toFixed(2)}
-        · 平倉費 ${dayDetail.closeFees.toFixed(2)}
-        · 補倉 ${dayDetail.transfer.toFixed(2)}
-        · 成交 ${dayTrades.length} 筆
-      </div>` : ''}
+      <p class="muted" style="font-size:11px;margin:8px 0 0">點選日期開啟當日明細（成交列）。日界線：Asia/Taipei。</p>
     </div>
 
     <div class="panel-block">
@@ -1486,14 +1561,24 @@ function renderPortfolio() {
     }
     const dayBtn = e.target.closest('[data-day]');
     if (dayBtn) {
-      portfolioDay = portfolioDay === dayBtn.dataset.day ? null : dayBtn.dataset.day;
+      const key = dayBtn.dataset.day;
+      const row = ledger.get(key);
+      if (!row) {
+        portfolioDay = null;
+        toast('當日無盈虧紀錄');
+        renderPortfolio();
+        return;
+      }
+      portfolioDay = portfolioDay === key ? null : key;
       renderPortfolio();
+      openDayPnlSheet(key, row);
       return;
     }
     if (e.target.closest('#calPrev')) {
       let nm = m - 1; let ny = y;
       if (nm < 1) { nm = 12; ny -= 1; }
       portfolioMonth = { y: ny, m: nm };
+      portfolioDay = null;
       renderPortfolio();
       return;
     }
@@ -1501,6 +1586,7 @@ function renderPortfolio() {
       let nm = m + 1; let ny = y;
       if (nm > 12) { nm = 1; ny += 1; }
       portfolioMonth = { y: ny, m: nm };
+      portfolioDay = null;
       renderPortfolio();
       return;
     }
@@ -1532,6 +1618,7 @@ function renderPortfolio() {
     portfolioFilterTo = e.target.value;
     renderPortfolio();
   });
+  bindEquityChartTip();
 }
 
 function radarSvg(dims) {

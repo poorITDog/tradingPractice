@@ -31,6 +31,7 @@ GitHub Pages（啟用後）：`https://pooritdog.github.io/tradingPractice/`
 - 段位：排位賽、積分升降、本機榜
 - 設定：補倉、匯入預覽、重置、免責
 - 倉位表：每列 **市價平倉／反手**（對齊 Bybit／OKX 操作密度）
+- 資產頁：**每日盈虧日曆**（Asia/Taipei）、今日／7／30 日統計、詳細權益曲線、持倉佔比、日結 CSV
 - Google Drive：設定頁連接，備份至 `apex-trade-lab-v1.json`（與 Solara 分開）
 - 歷史回放：規劃中，見 [`ROADMAP-REPLAY-DRIVE.md`](ROADMAP-REPLAY-DRIVE.md)
 
