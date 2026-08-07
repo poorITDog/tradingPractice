@@ -18,7 +18,8 @@ const text = exportState(s);
 assert.ok(text.includes('__bigint'));
 const imp = importState(text);
 assert.equal(imp.ok, true);
-assert.equal(imp.state.schemaVersion, 1);
+assert.equal(imp.state.schemaVersion, 2);
+assert.ok(imp.state.ladder);
 assert.equal(imp.state.account.walletMicros, 50000000000n);
 
 assert.equal(importState('{bad').ok, false);

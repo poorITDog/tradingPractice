@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="APEX" />
   <link rel="manifest" href="apex.webmanifest" />
-  <title>APEX — Trade Lab</title>
+  <title>APEX — 交易練習室</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -22,9 +22,9 @@
     <div class="splash-inner">
       <div class="splash-mark">APEX</div>
       <p class="splash-sub">真實行情 · 零風險練習</p>
-      <p class="splash-tag">Trade Lab · 鋒</p>
+      <p class="splash-tag">交易練習室 · 鋒</p>
       <button type="button" class="btn accent" id="btnEnter">開始練習</button>
-      <p class="splash-disc">模擬資金 · 非真實交易 · Not affiliated with Bybit</p>
+      <p class="splash-disc">模擬資金 · 非真實交易 · 與 Bybit 無關聯</p>
     </div>
   </div>
 
@@ -35,7 +35,8 @@
       <div class="ticker-strip" id="tickerStrip">—</div>
       <div class="chrome-right">
         <span class="pill warn" id="demoPill">模擬資金 · 非真實交易</span>
-        <span class="pill" id="connPill">connecting</span>
+        <span class="pill" id="rankPill">青銅 IV</span>
+        <span class="pill" id="connPill">連線中</span>
         <span class="pill muted" id="srcPill">—</span>
       </div>
     </header>
@@ -76,16 +77,16 @@
                 <input type="number" id="limitPrice" step="any" min="0" />
               </label>
               <div class="row checks">
-                <label><input type="checkbox" id="useTp" /> TP</label>
+                <label><input type="checkbox" id="useTp" /> 止盈</label>
                 <input type="number" id="tp" step="any" class="mini" disabled />
-                <label><input type="checkbox" id="useSl" /> SL</label>
+                <label><input type="checkbox" id="useSl" /> 停損</label>
                 <input type="number" id="sl" step="any" class="mini" disabled />
               </div>
-              <label class="row checks"><input type="checkbox" id="reduceOnly" /> Reduce-Only（只減倉）</label>
+              <label class="row checks"><input type="checkbox" id="reduceOnly" /> 只減倉</label>
               <p class="summary" id="preSummary">—</p>
               <div class="side-actions">
-                <button type="submit" class="btn long" data-side="long" id="btnLong">Long 做多</button>
-                <button type="submit" class="btn short" data-side="short" id="btnShort">Short 做空</button>
+                <button type="submit" class="btn long" data-side="long" id="btnLong">做多</button>
+                <button type="submit" class="btn short" data-side="short" id="btnShort">做空</button>
               </div>
               <button type="button" class="btn ghost" id="btnClose">市價平倉</button>
             </form>
@@ -109,11 +110,11 @@
     </main>
 
     <nav class="nav" aria-label="主導覽">
-      <button type="button" data-nav="trade" class="active">Trade</button>
-      <button type="button" data-nav="portfolio">Portfolio</button>
-      <button type="button" data-nav="analyze">Analyze</button>
-      <button type="button" data-nav="rank">Rank</button>
-      <button type="button" data-nav="settings">More</button>
+      <button type="button" data-nav="trade" class="active">交易</button>
+      <button type="button" data-nav="portfolio">資產</button>
+      <button type="button" data-nav="analyze">分析</button>
+      <button type="button" data-nav="rank">段位</button>
+      <button type="button" data-nav="settings">設定</button>
     </nav>
   </div>
 
@@ -124,8 +125,8 @@
   <div class="coach hidden" id="coach"></div>
 
   <footer class="footer-disc">
-    Apex Trade Lab 為個人模擬練習工具，唔係投資建議。Not affiliated with Bybit。
-    模擬撮合／手續費／強平可能與真實交易所不同。成績僅反映本機練習表現。
+    Apex Trade Lab 為個人模擬練習工具，不是投資建議。與 Bybit 無關聯。
+    模擬撮合／手續費／強平可能與真實交易所不同。段位與成績僅反映本機練習表現。
   </footer>
 
   <script type="module" src="apex.js"></script>

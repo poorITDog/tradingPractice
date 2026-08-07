@@ -48,8 +48,8 @@ assert.equal(dims.dims.aggression, 34);
 assert.equal(dims.label, '謹慎趨勢者');
 assert.equal(dims.tips.length, 3);
 
-assert.equal(rankTier(95), 'Apex');
-assert.equal(rankTier(10), 'Novice');
+assert.equal(rankTier(95), '頂尖');
+assert.equal(rankTier(10), '需加強');
 
 const few = abilityScore({ trades: trades.slice(0, 3), equitySamples: equity, startEquity: 50000 });
 assert.equal(few.ok, false);
