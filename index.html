@@ -55,17 +55,36 @@
             <button type="button" class="text-btn" id="toggleBook">顯示訂單簿／成交</button>
           </div>
           <aside class="order-pane">
-            <div class="equity-bar" id="equityBar"></div>
+            <div class="ticket-head">
+              <div class="ticket-sym" id="ticketSym">BTCUSDT 永續</div>
+              <div class="mode-row">
+                <div class="seg mini-seg" id="marginModeSeg" title="保證金模式">
+                  <button type="button" data-margin="isolated" class="active">逐倉</button>
+                  <button type="button" data-margin="cross" disabled title="練習室僅支援逐倉">全倉</button>
+                </div>
+                <div class="seg mini-seg" id="posModeSeg" title="持倉模式">
+                  <button type="button" data-posmode="oneway" class="active">單向</button>
+                  <button type="button" data-posmode="hedge" disabled title="練習室僅支援單向持倉">雙向</button>
+                </div>
+              </div>
+              <div class="equity-bar" id="equityBar"></div>
+            </div>
             <form id="orderForm" class="order-form" autocomplete="off">
-              <div class="row">
-                <label>槓桿 <span id="levVal">5x</span></label>
+              <div class="row lev-row">
+                <button type="button" class="lev-badge" id="levBadge">槓桿 <span id="levVal">5x</span> / 最高 50x</button>
                 <input type="range" id="leverage" min="1" max="50" value="5" />
               </div>
               <div class="seg" id="ordTypeSeg">
                 <button type="button" data-type="market" class="active">市價</button>
                 <button type="button" data-type="limit">限價</button>
+                <button type="button" data-type="stop_market">條件市價</button>
+                <button type="button" data-type="stop_limit">條件限價</button>
               </div>
-              <label class="field">數量
+              <div class="row checks">
+                <label><input type="radio" name="qtyUnit" id="qtyUnitCoin" value="coin" checked /> 幣數量</label>
+                <label><input type="radio" name="qtyUnit" id="qtyUnitUsdt" value="usdt" /> USDT 名義</label>
+              </div>
+              <label class="field">數量 <span id="qtyUnitLabel">（幣）</span>
                 <input type="number" id="qty" step="any" min="0" placeholder="0.001" />
               </label>
               <div class="size-chips" id="sizeChips" aria-label="倉位比例">
@@ -74,8 +93,18 @@
                 <button type="button" data-pct="50">50%</button>
                 <button type="button" data-pct="100">100%</button>
               </div>
-              <label class="field limit-only hidden">限價
+              <label class="field limit-only stop-limit-only hidden">限價
                 <input type="number" id="limitPrice" step="any" min="0" />
+              </label>
+              <label class="field cond-only hidden">觸發價
+                <input type="number" id="triggerPrice" step="any" min="0" />
+              </label>
+              <label class="field limit-only hidden">時效 (TIF)
+                <select id="tif">
+                  <option value="GTC">GTC</option>
+                  <option value="IOC">IOC</option>
+                  <option value="PostOnly">只掛單 (PostOnly)</option>
+                </select>
               </label>
               <div class="row checks">
                 <label><input type="checkbox" id="useTp" /> 止盈</label>
@@ -83,21 +112,30 @@
                 <label><input type="checkbox" id="useSl" /> 停損</label>
                 <input type="number" id="sl" step="any" class="mini" disabled />
               </div>
-              <label class="row checks"><input type="checkbox" id="reduceOnly" /> 只減倉</label>
+              <div class="size-chips roi-chips" id="roiChips" aria-label="止盈停損快捷">
+                <button type="button" data-roi-tp="1">止盈 +1%</button>
+                <button type="button" data-roi-tp="2">止盈 +2%</button>
+                <button type="button" data-roi-sl="1">停損 -1%</button>
+                <button type="button" data-roi-sl="2">停損 -2%</button>
+              </div>
+              <label class="row checks"><input type="checkbox" id="reduceOnly" /> 只減倉 (Reduce Only)</label>
               <p class="summary" id="preSummary">—</p>
               <div class="side-actions">
                 <button type="submit" class="btn long" data-side="long" id="btnLong">做多</button>
                 <button type="submit" class="btn short" data-side="short" id="btnShort">做空</button>
               </div>
-              <button type="button" class="btn ghost" id="btnClose">市價平倉</button>
+              <button type="button" class="btn ghost" id="btnClose">市價平倉（當前合約）</button>
             </form>
           </aside>
         </div>
         <div class="bottom-tabs">
           <div class="tab-heads" id="posTabHeads">
             <button type="button" class="active" data-tab="positions">倉位</button>
-            <button type="button" data-tab="orders">掛單</button>
-            <button type="button" data-tab="history">歷史</button>
+            <button type="button" data-tab="orders">當前委託</button>
+            <button type="button" data-tab="history">成交</button>
+            <button type="button" data-tab="closed">已平倉</button>
+            <button type="button" class="tab-action" id="btnCloseAll" title="市價平倉全部">全部平倉</button>
+            <button type="button" class="tab-action" id="btnCancelAll" title="取消全部委託">全部撤單</button>
           </div>
           <div class="tab-body" id="posTabBody"></div>
         </div>
