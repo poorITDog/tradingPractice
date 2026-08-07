@@ -10,7 +10,11 @@ import {
 } from './lib/analytics.js';
 import {
   startChallenge, challengeRemaining, settleChallenge, pushLeaderboard, exportScoreCard,
+  defaultLadder,
 } from './lib/rank.js';
+import {
+  formatRank, nextRankHint, displayTier, TIER_LABEL,
+} from './lib/ladder.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -18,6 +22,7 @@ const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 const loaded = loadState();
 let state = loaded.state;
 if (!state.account) state.account = createAccount(state.settings.startBalance);
+if (!state.ladder) state.ladder = defaultLadder();
 
 const market = createMarket({
   symbol: state.ui.symbol || 'BTCUSDT',
@@ -72,6 +77,25 @@ function challengeBlocksTrading() {
   return challengeRemaining(ch) <= 0;
 }
 
+function refreshRankPill() {
+  const el = $('#rankPill');
+  if (!el) return;
+  el.textContent = formatRank(state.ladder || defaultLadder());
+}
+
+function finalizeChallengeSettle(res) {
+  state.challenge = res.challenge;
+  if (res.ladder) state.ladder = res.ladder;
+  const pushed = pushLeaderboard(state.leaderboard, res.entry);
+  state.leaderboard = pushed.board;
+  persist();
+  refreshRankPill();
+  toast(res.ranked?.message || res.entry.message || (pushed.accepted
+    ? `排位賽結算 · 能力分 ${res.entry.score?.toFixed?.(1)}`
+    : '排位賽結算 · 樣本不足，段位不變'));
+  return true;
+}
+
 function maybeAutoSettleChallenge() {
   const ch = state.challenge;
   if (!ch || ch.status !== 'active') return false;
@@ -81,18 +105,10 @@ function maybeAutoSettleChallenge() {
     trades: closedTrades(),
     equitySamples: state.equitySamples,
     startEquity: ch.startBalance || 50000,
+    ladder: state.ladder || defaultLadder(),
   });
   if (!res.ok) return false;
-  state.challenge = res.challenge;
-  const pushed = pushLeaderboard(state.leaderboard, res.entry);
-  state.leaderboard = pushed.board;
-  persist();
-  if (pushed.accepted) {
-    toast(`Challenge 時間到 · Score ${res.entry.score?.toFixed?.(1)} · ${res.entry.tier}`);
-  } else {
-    toast('Challenge 時間到 · 樣本不足未入榜');
-  }
-  return true;
+  return finalizeChallengeSettle(res);
 }
 
 function closedTrades() {
@@ -132,16 +148,16 @@ function enterApp() {
     loadHourly();
     if (!state.settings.coachDone) showCoach(0);
   }).catch(() => {
-    toast('無法取得行情，請檢查網絡');
+    toast('無法取得行情，請檢查網路');
   });
 }
 
 function showCoach(step) {
   coachStep = step;
   const steps = [
-    { t: '圖表', d: '呢度係真實 K 線。先觀察趨勢，再決定方向。' },
-    { t: '槓桿', d: '新手預設上限 5x。槓桿愈高，強平愈近。' },
-    { t: 'Long / Short', d: '綠鍵做多、紅鍵做空。下單前會顯示保證金同預估強平。' },
+    { t: '圖表', d: '這裡是真實 K 線。先觀察趨勢，再決定方向。' },
+    { t: '槓桿', d: '新手預設上限 5x。槓桿愈高，距離強平愈近。' },
+    { t: '做多／做空', d: '綠色做多、紅色做空。下單前會顯示保證金與預估強平。' },
   ];
   const s = steps[step];
   const el = $('#coach');
@@ -241,7 +257,14 @@ function renderIntervals() {
 
 function updateConn(conn) {
   const pill = $('#connPill');
-  pill.textContent = conn;
+  const map = {
+    connecting: '連線中',
+    live: '即時',
+    reconnecting: '重連中',
+    degraded: '降級',
+    offline: '離線',
+  };
+  pill.textContent = map[conn] || conn;
   pill.className = 'pill ' + (conn === 'live' ? 'live' : conn === 'offline' ? 'bad' : '');
 }
 
@@ -275,7 +298,7 @@ function updateTicker(t) {
   if (!t.markApprox) {
     const riskEvs = onMarkUpdate(state.account, t.symbol, t.mark, fees());
     for (const ev of riskEvs) {
-      const label = ev.type === 'liquidation' ? '強平' : ev.type === 'sl' ? 'SL 觸發' : 'TP 觸發';
+      const label = ev.type === 'liquidation' ? '強平' : ev.type === 'sl' ? '停損觸發' : '止盈觸發';
       toast(`${label} ${t.symbol}`);
     }
   }
@@ -325,7 +348,7 @@ function renderBook(book) {
   if (!book) return;
   const asks = [...book.asks].slice(0, 8).reverse();
   const bids = book.bids.slice(0, 8);
-  el.innerHTML = `<div style="color:var(--muted);margin-bottom:4px">Orderbook</div>`
+  el.innerHTML = `<div style="color:var(--muted);margin-bottom:4px">訂單簿</div>`
     + asks.map(([p, s]) => `<div class="down"><span>${p}</span><span>${s}</span></div>`).join('')
     + `<div style="height:6px"></div>`
     + bids.map(([p, s]) => `<div class="up"><span>${p}</span><span>${s}</span></div>`).join('');
@@ -333,7 +356,7 @@ function renderBook(book) {
 
 function renderTrades(trades) {
   const el = $('#recentTrades');
-  el.innerHTML = `<div style="color:var(--muted);margin-bottom:4px">Trades</div>`
+  el.innerHTML = `<div style="color:var(--muted);margin-bottom:4px">成交</div>`
     + (trades || []).slice(0, 12).map((t) =>
       `<div class="${t.side === 'buy' ? 'up' : 'down'} flash"><span>${t.price}</span><span>${t.size}</span></div>`
     ).join('');
@@ -356,7 +379,7 @@ function updatePreSummary() {
   let canSubmit = qty > 0 && !!t && !!px && !challengeBlocksTrading();
   if (!t || !(qty > 0) || !px) {
     el.textContent = challengeBlocksTrading()
-      ? 'Challenge 已結束，請到 Rank 結算'
+      ? '排位賽已結束，請到「段位」頁結算'
       : '輸入數量以預覽保證金／強平';
     canSubmit = false;
   } else {
@@ -367,9 +390,9 @@ function updatePreSummary() {
     const longLiq = liqPrice({ side: 'long', entry: px, leverage: lev, mmr: meta.mmr, feeRate: fees().taker });
     const shortLiq = liqPrice({ side: 'short', entry: px, leverage: lev, mmr: meta.mmr, feeRate: fees().taker });
     const mark = t.markApprox ? t.last : t.mark;
-    el.innerHTML = `名義 $${notional.toFixed(2)} · 保證金 ≈ $${im.toFixed(2)} · 預估費 $${fee.toFixed(4)}<br>
-    預估強平 Long ${longLiq.toFixed(2)} (${((mark - longLiq) / mark * 100).toFixed(2)}%) ·
-    Short ${shortLiq.toFixed(2)} (${((shortLiq - mark) / mark * 100).toFixed(2)}%)`;
+    el.innerHTML = `名義價值 $${notional.toFixed(2)} · 保證金約 $${im.toFixed(2)} · 預估手續費 $${fee.toFixed(4)}<br>
+    預估強平 多 ${longLiq.toFixed(2)} (${((mark - longLiq) / mark * 100).toFixed(2)}%) ·
+    空 ${shortLiq.toFixed(2)} (${((shortLiq - mark) / mark * 100).toFixed(2)}%)`;
     if (!reduce && snap.available < im + fee) canSubmit = false;
   }
   const longBtn = $('#btnLong');
@@ -385,12 +408,12 @@ function warnLiqProximity() {
   for (const p of snap.positions) {
     if (p.distToLiq < 0.03) {
       lastLiqWarnAt = now;
-      toast(`危急：${p.symbol} 距強平 ${(p.distToLiq * 100).toFixed(2)}%`);
+      toast(`危急：${p.symbol} 距離強平 ${(p.distToLiq * 100).toFixed(2)}%`);
       break;
     }
     if (p.distToLiq < 0.08) {
       lastLiqWarnAt = now;
-      toast(`警告：${p.symbol} 距強平 ${(p.distToLiq * 100).toFixed(2)}%`);
+      toast(`警告：${p.symbol} 距離強平 ${(p.distToLiq * 100).toFixed(2)}%`);
       break;
     }
   }
@@ -411,14 +434,14 @@ function setQtyFromPct(pct) {
     qty = Math.floor((snap.available * lev / px) / meta.lot) * meta.lot;
   }
   $('#qty').value = qty > 0 ? String(Number(qty.toFixed(8))) : '';
-  if (pct === 100) toast('100% 倉位風險極高');
+  if (pct === 100) toast('使用 100% 保證金風險極高');
   updatePreSummary();
 }
 
 function renderEquity() {
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   const cls = snap.returnPct >= 0 ? 'up' : 'down';
-  const deg = marks[market.getSymbol()] == null ? ' · mark degraded' : '';
+  const deg = marks[market.getSymbol()] == null ? ' · 標記價降級' : '';
   $('#equityBar').innerHTML = `權益 <b class="mono">${snap.equity.toFixed(2)}</b>
     · 可用 ${snap.available.toFixed(2)}
     · 收益 <span class="${cls}">${snap.returnPct >= 0 ? '+' : ''}${snap.returnPct.toFixed(2)}%</span>${deg}`;
@@ -429,15 +452,15 @@ function renderPosTab() {
   const snap = accountSnapshot(state.account, displayMarks(), fees());
   if (posTab === 'positions') {
     if (!snap.positions.length) {
-      body.innerHTML = '<p style="color:var(--muted)">暫無倉位</p>';
+      body.innerHTML = '<p style="color:var(--muted)">目前沒有倉位</p>';
       return;
     }
-    body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>標記</th><th>PnL</th><th>強平</th><th>距強平</th></tr></thead><tbody>`
+    body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>數量</th><th>入場</th><th>標記</th><th>盈虧</th><th>強平</th><th>距離強平</th></tr></thead><tbody>`
       + snap.positions.map((p) => {
         const band = p.distToLiq < 0.03 ? 'crit' : p.distToLiq < 0.08 ? 'warn' : '';
         const bandTxt = band === 'crit' ? '危急 ' : band === 'warn' ? '警告 ' : '';
         const pnlCls = p.upnl >= 0 ? 'up' : 'down';
-        return `<tr class="liq-${band}"><td>${p.symbol}</td><td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? 'Long' : 'Short'}</td>
+        return `<tr class="liq-${band}"><td>${p.symbol}</td><td class="${p.side === 'long' ? 'up' : 'down'}">${p.side === 'long' ? '多' : '空'}</td>
         <td>${p.qty}</td><td>${p.entry.toFixed(2)}</td><td>${p.mark?.toFixed?.(2) ?? '—'}</td>
         <td class="${pnlCls}">${p.upnl >= 0 ? '+' : ''}${p.upnl.toFixed(2)}</td>
         <td>${p.liqPrice.toFixed(2)}</td><td>${bandTxt}${(p.distToLiq * 100).toFixed(2)}%</td></tr>`;
@@ -445,7 +468,7 @@ function renderPosTab() {
   } else if (posTab === 'orders') {
     const rows = snap.openOrders;
     if (!rows.length) {
-      body.innerHTML = '<p style="color:var(--muted)">暫無掛單</p>';
+      body.innerHTML = '<p style="color:var(--muted)">目前沒有掛單</p>';
       return;
     }
     body.innerHTML = `<table><thead><tr><th>合約</th><th>方向</th><th>價</th><th>量</th><th></th></tr></thead><tbody>`
@@ -462,7 +485,7 @@ function renderPosTab() {
   } else {
     const fills = snap.fills;
     body.innerHTML = fills.length
-      ? `<table><thead><tr><th>時間</th><th>合約</th><th>側</th><th>標記</th><th>價</th><th>量</th><th>費</th></tr></thead><tbody>`
+      ? `<table><thead><tr><th>時間</th><th>合約</th><th>方向</th><th>標記</th><th>價格</th><th>數量</th><th>費用</th></tr></thead><tbody>`
         + fills.map((f) => {
           const tag = f.reason === 'liquidation' ? 'liq'
             : f.reason === 'funding' || f.side === 'funding' ? 'fund'
@@ -474,13 +497,13 @@ function renderPosTab() {
           <td>${Number(f.feeUsdt || 0).toFixed(4)}</td></tr>`;
         }).join('')
         + '</tbody></table>'
-      : '<p style="color:var(--muted)">暫無成交</p>';
+      : '<p style="color:var(--muted)">目前沒有成交</p>';
   }
 }
 
 async function confirmHighLev(lev) {
   if (lev >= 25) {
-    return window.confirm(`槓桿 ${lev}x 極高風險，距強平會非常近。確定？`);
+    return window.confirm(`槓桿 ${lev}x 極高風險，距離強平會非常近。確定繼續？`);
   }
   if (lev >= 10) {
     toast(`注意：槓桿 ${lev}x 風險偏高`);
@@ -491,8 +514,8 @@ async function confirmHighLev(lev) {
 async function submitOrder(side) {
   const t = market.getTicker();
   const book = market.getBook();
-  if (!t) return toast('行情未就緒');
-  if (challengeBlocksTrading()) return toast('Challenge 已結束，請到 Rank 查看結算');
+  if (!t) return toast('行情尚未就緒');
+  if (challengeBlocksTrading()) return toast('排位賽已結束，請到「段位」頁查看結算');
   const qty = Number($('#qty').value);
   if (!(qty > 0)) return toast('請輸入數量');
   const lev = levEffective();
@@ -504,7 +527,7 @@ async function submitOrder(side) {
   const vs = entryVsMaSign(entryPx, ma20);
   const reduceOnly = !!$('#reduceOnly')?.checked;
   if (!reduceOnly && !$('#useSl').checked && state.settings.beginnerCap) {
-    toast('建議設定 Stop Loss（新手模式）');
+    toast('建議設定停損（新手模式）');
   }
 
   const input = {
@@ -538,14 +561,14 @@ async function submitOrder(side) {
   renderPosTab();
   const px = r.fillPrice ?? entryPx;
   const fee = r.feeUsdt ?? 0;
-  toast(`${side === 'long' ? 'Long' : 'Short'} ${qty} @ ${Number(px).toFixed(2)} · 費 ${Number(fee).toFixed(4)}`);
+  toast(`${side === 'long' ? '做多' : '做空'} ${qty} @ ${Number(px).toFixed(2)} · 手續費 ${Number(fee).toFixed(4)}`);
   closeDrawer();
 }
 
 function closePosition() {
   const sym = market.getSymbol();
   const pos = state.account.positions[sym];
-  if (!pos) return toast('無倉位');
+  if (!pos) return toast('目前沒有倉位');
   const t = market.getTicker();
   const r = placeOrder(state.account, {
     symbol: sym,
@@ -595,12 +618,13 @@ function renderPortfolio() {
   const sh = sharpeLike(state.equitySamples || []);
   const wins = trades.filter((t) => t.pnlUsdt >= 0).length;
   const wr = trades.length ? (wins / trades.length * 100) : 0;
-  el.innerHTML = `<div class="page-head"><h1>Portfolio</h1>
-    <p>權益曲線、風險指標與已平倉紀錄（唔喺呢度下單）。</p></div>
+  el.innerHTML = `<div class="page-head"><h1>資產組合</h1>
+    <p>權益曲線、風險指標與已平倉紀錄（此頁不下單）。</p></div>
     <div class="panel-block mono">
       權益 ${snap.equity.toFixed(2)} USDT · 錢包 ${snap.wallet.toFixed(2)} ·
       收益 ${snap.returnPct.toFixed(2)}% · 已平倉 ${trades.length} 筆
-      ${score.ok ? ` · Ability ${score.score.toFixed(1)} (${rankTier(score.score)})` : ' · 樣本不足'}
+      ${score.ok ? ` · 能力分 ${score.score.toFixed(1)}（${rankTier(score.score)}）` : ' · 樣本不足'}
+      · 段位 ${formatRank(state.ladder)}
     </div>
     <div class="panel-block">
       <h3>權益曲線</h3>
@@ -614,7 +638,7 @@ function renderPortfolio() {
     <div class="panel-block">
       <h3>最近平倉</h3>
       ${trades.slice(-20).reverse().map((t) =>
-        `<div class="lb-row"><span>${t.symbol} ${t.side}</span>
+        `<div class="lb-row"><span>${t.symbol} ${t.side === 'long' ? '多' : '空'}</span>
         <span class="${t.pnlUsdt >= 0 ? 'up' : 'down'}">${t.pnlUsdt >= 0 ? '+' : ''}${t.pnlUsdt.toFixed(2)}</span></div>`
       ).join('') || '<p style="color:var(--muted)">尚未平倉</p>'}
     </div>`;
@@ -659,18 +683,18 @@ function renderAnalyze() {
   const score = abilityScore({
     trades, equitySamples: state.equitySamples, startEquity: state.settings.startBalance,
   });
-  el.innerHTML = `<div class="page-head"><h1>Analyze</h1>
-    <p>六維風格雷達與 Ability Score（練習報告，唔係獲利保證）。</p></div>
+  el.innerHTML = `<div class="page-head"><h1>風格分析</h1>
+    <p>六維風格雷達與能力分（練習報告，不是獲利保證）。</p></div>
     <div class="panel-block">
       ${dims.ok ? `<div class="radar-wrap">${radarSvg(dims.dims)}</div>
         <h3 style="text-align:center">${state.settings.mildLabels ? '風格診斷' : dims.label}</h3>
-        <ul class="tips">${dims.tips.map((t) => `<li>${t}</li>`).join('')}</ul>`
-    : `<p style="color:var(--muted)">完成 10 筆已平倉交易後解鎖風格解讀。（而家 ${trades.length} 筆）</p>
-       <p><button type="button" class="btn accent" data-go="trade">去交易</button></p>`}
+        <ul class="tips">${dims.tips.map((tip) => `<li>${tip}</li>`).join('')}</ul>`
+    : `<p style="color:var(--muted)">完成 10 筆已平倉交易後解鎖風格解讀。（目前 ${trades.length} 筆）</p>
+       <p><button type="button" class="btn accent" data-go="trade">前往交易</button></p>`}
     </div>
     <div class="panel-block mono">
-      Ability Score：${score.ok ? score.score.toFixed(1) + ' · ' + rankTier(score.score) : '樣本不足'}
-      ${score.ok ? `<br>r=${score.parts.r.toFixed(0)} q=${score.parts.q.toFixed(0)} d=${score.parts.d.toFixed(0)} s=${score.parts.s.toFixed(0)}` : ''}
+      能力分：${score.ok ? score.score.toFixed(1) + ' · ' + rankTier(score.score) : '樣本不足'}
+      ${score.ok ? `<br>報酬 ${score.parts.r.toFixed(0)} · 質量 ${score.parts.q.toFixed(0)} · 回撤 ${score.parts.d.toFixed(0)} · 穩定 ${score.parts.s.toFixed(0)}` : ''}
     </div>`;
   el.onclick = (e) => {
     if (e.target.dataset.go === 'trade') showView('trade');
@@ -698,38 +722,67 @@ function renderRank() {
   const remain = ch ? challengeRemaining(ch) : 0;
   const board = sortedBoard(state.leaderboard || []);
   const expired = ch?.status === 'active' && remain <= 0;
-  el.innerHTML = `<div class="page-head"><h1>Rank</h1>
-    <p>Challenge 結算後進入本機榜；Live Sim 只更新預覽分數。</p></div>
-    <div class="panel-block">
-      <h3>Challenge（7 日 UTC）</h3>
-      ${ch?.status === 'active'
-    ? `<p class="mono">${expired ? '已結束 · 等待結算' : `剩餘 ${Math.ceil(remain / 3600000)} 小時`} · 禁止重置／補倉</p>
-       <button type="button" class="btn accent" id="btnSettle">${expired ? '結算並進榜' : '提前結算'}</button>`
-    : `<p>起始 50,000 USDT · BTC/ETH/SOL · 結算寫入本機榜</p>
-       <button type="button" class="btn accent" id="btnStartCh">開始 Challenge</button>`}
+  const ladder = state.ladder || defaultLadder();
+  const shown = displayTier(ladder);
+  const lpPct = tierIndexSafe(ladder) >= 5 ? 100 : Math.min(100, Math.max(0, ladder.lp));
+  const hist = (ladder.history || []).slice(0, 5);
+
+  el.innerHTML = `<div class="page-head"><h1>段位</h1>
+    <p>打排位賽 → 得到能力分 → 加減積分（LP）→ 滿 100 升一小段。練習模式不影響段位。</p></div>
+
+    <div class="panel-block rank-hero">
+      <div class="rank-badge">${TIER_LABEL[shown.tier] || '青銅'}${shown.division ? ' ' + shown.division : ''}</div>
+      <p class="mono">${formatRank(ladder)}</p>
+      <div class="lp-bar" aria-label="積分進度"><i style="width:${lpPct}%"></i></div>
+      <p style="color:var(--muted);margin:8px 0 0">${nextRankHint(ladder)}</p>
     </div>
+
     <div class="panel-block">
-      <h3>本機排行榜</h3>
+      <h3>排位賽（7 日）</h3>
+      ${ch?.status === 'active'
+    ? `<p class="mono">${expired ? '已結束 · 等待結算' : `剩餘約 ${Math.ceil(remain / 3600000)} 小時`} · 禁止重置／補倉</p>
+       <button type="button" class="btn accent" id="btnSettle">${expired ? '結算並更新段位' : '提前結算'}</button>
+       <p style="color:var(--muted);font-size:12px;margin-top:8px">開賽未滿 48 小時提前結算：只能扣分、不能加分。</p>`
+    : `<p>起始 50,000 USDT · BTC／ETH／SOL · 結算後依能力分加減積分</p>
+       <button type="button" class="btn accent" id="btnStartCh">開始排位賽</button>`}
+    </div>
+
+    <div class="panel-block">
+      <h3>最近場次</h3>
+      ${hist.length ? hist.map((h) => {
+        const sign = h.lpDelta > 0 ? '+' + h.lpDelta : String(h.lpDelta);
+        return `<div class="lb-row"><span>${new Date(h.at).toLocaleString()}</span>
+          <span>能力分 ${h.score?.toFixed?.(1) ?? '—'} · 積分 ${sign}</span></div>`;
+      }).join('') : '<p style="color:var(--muted)">尚未有排位賽結算</p>'}
+    </div>
+
+    <div class="panel-block">
+      <h3>本機成績榜</h3>
       <div class="seg" id="rankSortSeg" style="margin-bottom:10px">
-        <button type="button" data-sort="score" class="${rankSort === 'score' ? 'active' : ''}">Score</button>
+        <button type="button" data-sort="score" class="${rankSort === 'score' ? 'active' : ''}">能力分</button>
         <button type="button" data-sort="return" class="${rankSort === 'return' ? 'active' : ''}">收益%</button>
         <button type="button" data-sort="sharpe" class="${rankSort === 'sharpe' ? 'active' : ''}">Sharpe</button>
         <button type="button" data-sort="dd" class="${rankSort === 'dd' ? 'active' : ''}">回撤</button>
         <button type="button" data-sort="win" class="${rankSort === 'win' ? 'active' : ''}">勝率</button>
       </div>
       ${board.length
-    ? `<table class="rank-table"><thead><tr><th>#</th><th>段位</th><th>Score</th><th>收益%</th><th>Sharpe</th><th>回撤%</th><th>勝率</th><th>筆數</th></tr></thead><tbody>`
+    ? `<table class="rank-table"><thead><tr><th>#</th><th>段位</th><th>能力分</th><th>收益%</th><th>積分Δ</th><th>筆數</th></tr></thead><tbody>`
       + board.map((e, i) => `<tr>
         <td>${i + 1}</td><td>${e.tier}</td><td>${e.score?.toFixed?.(1) ?? '—'}</td>
         <td>${e.returnPct?.toFixed?.(2) ?? '—'}</td>
-        <td>${e.parts?.S == null ? '—' : Number(e.parts.S).toFixed(2)}</td>
-        <td>${e.parts?.D == null ? '—' : Number(e.parts.D).toFixed(2)}</td>
-        <td>${e.parts?.W == null ? '—' : (e.parts.W * 100).toFixed(0) + '%'}</td>
+        <td>${e.lpDelta == null ? '—' : (e.lpDelta > 0 ? '+' : '') + e.lpDelta}</td>
         <td>${e.trades ?? 0}</td></tr>`).join('')
       + '</tbody></table>'
-    : '<p style="color:var(--muted)">尚未有 Challenge 成績</p>'}
+    : '<p style="color:var(--muted)">尚未有合格排位賽成績</p>'}
       ${board[0] ? '<button type="button" class="btn ghost" id="btnScoreCard" style="margin-top:8px">匯出最新成績碼</button>' : ''}
+    </div>
+
+    <div class="panel-block" style="color:var(--muted);font-size:12px;line-height:1.55">
+      <h3 style="color:var(--text)">段位一覽</h3>
+      青銅 → 白銀 → 黃金 → 白金 → 鑽石（各有 IV–I）→ 大師 → 宗師（≥300 積分）→ 菁英（≥500 積分）。
+      詳細規則見 RANKING.md。
     </div>`;
+
   $('#rankSortSeg')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-sort]');
     if (!b) return;
@@ -750,7 +803,7 @@ function renderRank() {
     state.equitySamples = [{ t: Date.now(), equity: 50000 }];
     state.challenge = startChallenge();
     persist();
-    toast('Challenge 開始');
+    toast('排位賽開始');
     showView('trade');
   });
   $('#btnSettle')?.addEventListener('click', () => {
@@ -760,32 +813,33 @@ function renderRank() {
       trades: closedTrades(),
       equitySamples: state.equitySamples,
       startEquity: state.challenge.startBalance || 50000,
+      ladder: state.ladder || defaultLadder(),
     });
     if (!res.ok) return toast('結算失敗：' + res.reason);
-    state.challenge = res.challenge;
-    const pushed = pushLeaderboard(state.leaderboard, res.entry);
-    state.leaderboard = pushed.board;
-    persist();
-    if (!pushed.accepted) toast('樣本不足，未入榜（需 ≥10 筆已平倉）');
-    else toast(`結算完成 · Score ${res.entry.score?.toFixed?.(1)} · ${res.entry.tier}`);
+    finalizeChallengeSettle(res);
     renderRank();
     showView('analyze');
   });
+}
+
+function tierIndexSafe(ladder) {
+  const order = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'challenger'];
+  return order.indexOf(ladder.tier);
 }
 
 function renderSettings() {
   const el = $('#view-settings');
   const s = state.settings;
   const chActive = state.challenge?.status === 'active';
-  el.innerHTML = `<div class="page-head"><h1>Settings</h1>
-    <p>帳戶、費用、數據源與免責。</p></div>
+  el.innerHTML = `<div class="page-head"><h1>設定</h1>
+    <p>帳戶、費用、資料來源與免責聲明。</p></div>
     <div class="panel-block">
       <label class="field">Maker 費率 <input id="setMaker" type="number" step="0.0001" value="${s.makerFee}" /></label>
       <label class="field">Taker 費率 <input id="setTaker" type="number" step="0.0001" value="${s.takerFee}" /></label>
       <label><input type="checkbox" id="setBeginner" ${s.beginnerCap ? 'checked' : ''}/> 新手槓桿上限 5x</label>
       <label style="display:block;margin-top:8px"><input type="checkbox" id="setMild" ${s.mildLabels ? 'checked' : ''}/> 中性風格標籤</label>
-      <p style="color:var(--muted);margin-top:8px">數據源：${market.getSource()}（Bybit 優先，失敗則 OKX）</p>
-      <p style="color:var(--muted)">練習撮合 ≠ 交易所保證成交（限價為樂觀成交模型）</p>
+      <p style="color:var(--muted);margin-top:8px">資料來源：${market.getSource()}（優先 Bybit，失敗則使用 OKX）</p>
+      <p style="color:var(--muted)">練習撮合不等於交易所保證成交（限價為樂觀成交模型）</p>
     </div>
     <div class="panel-block">
       <h3>補倉（虛擬資金）</h3>
@@ -793,7 +847,7 @@ function renderSettings() {
         <input id="topUpAmt" type="number" min="1" step="100" value="10000" ${chActive ? 'disabled' : ''} />
       </label>
       <button type="button" class="btn ghost" id="btnTopUp" ${chActive ? 'disabled' : ''}>補倉</button>
-      ${chActive ? '<p style="color:var(--warning)">Challenge 期間禁止補倉</p>' : ''}
+      ${chActive ? '<p style="color:var(--warning)">排位賽期間禁止補倉</p>' : ''}
     </div>
     <div class="panel-block">
       <button type="button" class="btn ghost" id="btnExport">匯出 JSON</button>
@@ -805,17 +859,17 @@ function renderSettings() {
       <button type="button" class="btn accent" id="btnImport" disabled>確認匯入</button>
     </div>
     <div class="panel-block">
-      <p>重置會清除：倉位、掛單、成交歷史、已平倉、權益樣本、進行中 Challenge。</p>
+      <p>重置會清除：倉位、掛單、成交歷史、已平倉、權益樣本、進行中的排位賽。</p>
       <label class="field">輸入 RESET 確認
         <input id="resetConfirm" autocomplete="off" />
       </label>
       <button type="button" class="btn danger" id="btnReset">重置帳戶</button>
     </div>
     <div class="panel-block" style="color:var(--muted);font-size:12px;line-height:1.55">
-      Apex Trade Lab 係個人模擬練習工具，唔係投資建議、券商或訊號服務。<br>
-      Not affiliated with Bybit。僅使用公開市場數據（Bybit／OKX public API）。<br>
+      Apex Trade Lab 係個人模擬練習工具，不是投資建議、券商或訊號服務。<br>
+      與 Bybit 無關聯。僅使用公開市場資料（Bybit／OKX 公開 API）。<br>
       模擬撮合／手續費／強平可能與真實成交不同。<br>
-      Ability Score／段位僅反映本機練習表現，可被竄改，唔係金融資格。
+      能力分／段位僅反映本機練習表現，可能被竄改，不是金融資格。
     </div>`;
   let pendingImport = null;
   $('#setMaker').onchange = (e) => { state.settings.makerFee = Number(e.target.value); persist(); };
@@ -823,7 +877,7 @@ function renderSettings() {
   $('#setBeginner').onchange = (e) => { state.settings.beginnerCap = e.target.checked; persist(); };
   $('#setMild').onchange = (e) => { state.settings.mildLabels = e.target.checked; persist(); };
   $('#btnTopUp').onclick = () => {
-    if (chActive && !state.challenge.allowTopUp) return toast('Challenge 期間禁止補倉');
+    if (chActive && !state.challenge.allowTopUp) return toast('排位賽期間禁止補倉');
     const amt = Number($('#topUpAmt').value);
     const r = topUp(state.account, amt);
     if (!r.ok) return toast('補倉失敗');
@@ -857,11 +911,11 @@ function renderSettings() {
       `預覽 schema=${r.state.schemaVersion} · 起始金 ${r.state.settings?.startBalance} · `
       + `錢包≈${typeof wallet === 'number' ? wallet.toFixed(2) : wallet} · `
       + `已平倉 ${r.state.closedTrades?.length ?? 0} · 榜 ${r.state.leaderboard?.length ?? 0}`
-      + (r.state.challenge ? ` · Challenge ${r.state.challenge.status}` : '');
+      + (r.state.challenge ? ` · 排位賽 ${r.state.challenge.status}` : '');
   };
   $('#btnImport').onclick = () => {
     if (!pendingImport) return toast('請先預覽');
-    if (!window.confirm('確認以匯入資料取代而家狀態？會先備份目前資料。')) return;
+    if (!window.confirm('確認以匯入資料取代目前狀態？會先備份現有資料。')) return;
     saveState(state); // writes bak
     state = pendingImport;
     if (!state.account) state.account = createAccount(state.settings.startBalance);
@@ -871,7 +925,7 @@ function renderSettings() {
   };
   $('#btnReset').onclick = () => {
     if (state.challenge?.status === 'active' && !state.challenge.allowReset) {
-      return toast('Challenge 期間禁止重置');
+      return toast('排位賽期間禁止重置');
     }
     if ($('#resetConfirm').value !== 'RESET') return toast('請輸入 RESET');
     state.account = resetAccount(state.settings.startBalance);
@@ -970,9 +1024,10 @@ function wireUi() {
   renderIntervals();
   renderEquity();
   renderPosTab();
+  refreshRankPill();
   $('#levVal').textContent = levEffective() + 'x';
 
-  if (loaded.recovered) toast('已從備份／預設恢復資料');
+  if (loaded.recovered) toast('已從備份或預設資料恢復');
   if (state.ui.entered) enterApp();
 }
 

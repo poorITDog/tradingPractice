@@ -278,6 +278,27 @@ button { cursor: pointer; }
 }
 .equity-svg { max-width: 100%; height: auto; }
 #rankSortSeg { grid-template-columns: repeat(5, 1fr); }
+.rank-hero { text-align: center; }
+.rank-badge {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.lp-bar {
+  height: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.lp-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
 .summary {
   background: var(--bg);
   border: 1px solid var(--border);
