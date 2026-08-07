@@ -130,8 +130,8 @@ loop:
 | 點列切換合約（記住槓桿）、ROI%、價值／保證金 | ✅ |
 | 全部平倉／全部撤單／修改限價＋條件單 | ✅ |
 | 成交＋已平倉已實現盈虧 | ✅ |
-| R1 | 歷史 K 線 range + 回放時鐘 | 下一輪 |
-| R2 | 播放至 TP/SL 結果 + 單測 | 下一輪 |
+| R1 | 歷史 K 線 range + 回放時鐘 | ✅ `fetchKlinesRange` + 底欄「回放」 |
+| R2 | 播放至 TP/SL 結果 + 單測 | ✅ `playToResult` + `tests/replay-test.mjs` |
 | D1 | merge 強化 + 自動同步穩定性 | 與 R 並行 |
 
 ---

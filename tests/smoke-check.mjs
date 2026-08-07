@@ -16,6 +16,7 @@ const paths = [
   '/lib/rank.js',
   '/lib/ladder.js',
   '/lib/drive.js',
+  '/lib/replay.js',
   '/RANKING.md',
   '/ROADMAP-REPLAY-DRIVE.md',
 ];

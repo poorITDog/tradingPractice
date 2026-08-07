@@ -147,7 +147,7 @@ button { cursor: pointer; }
   position: fixed;
   left: 0; right: 0; bottom: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   background: var(--panel);
   border-top: 1px solid var(--border);
   z-index: 30;
@@ -157,9 +157,58 @@ button { cursor: pointer; }
   background: none;
   border: 0;
   color: var(--muted);
-  padding: 10px 4px;
+  padding: 10px 2px;
   font-size: 11px;
   min-height: 44px;
+}
+.replay-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.replay-bar.hidden { display: none; }
+.replay-bar .mono { font-family: var(--mono); }
+.replay-bar .replay-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.replay-bar button { min-height: 36px; width: auto; padding: 0 10px; }
+.replay-setup-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 700px) {
+  .replay-setup-grid { grid-template-columns: 1fr; }
+  .nav button { font-size: 10px; }
+}
+.replay-progress {
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.replay-progress > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+}
+.replay-result-card {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
 }
 .nav button.active { color: var(--accent); }
 

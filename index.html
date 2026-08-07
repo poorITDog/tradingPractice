@@ -44,6 +44,7 @@
 
     <main class="main">
       <section class="view active" data-view="trade" id="view-trade">
+        <div id="replayBar" class="replay-bar hidden" aria-live="polite"></div>
         <div class="trade-grid">
           <div class="chart-pane">
             <div class="intervals" id="intervals"></div>
@@ -149,12 +150,14 @@
       <section class="view" data-view="portfolio" id="view-portfolio"></section>
       <section class="view" data-view="analyze" id="view-analyze"></section>
       <section class="view" data-view="rank" id="view-rank"></section>
+      <section class="view" data-view="replay" id="view-replay"></section>
       <section class="view" data-view="settings" id="view-settings"></section>
     </main>
 
     <nav class="nav" aria-label="主導覽">
       <button type="button" data-nav="trade" class="active">交易</button>
       <button type="button" data-nav="portfolio">資產</button>
+      <button type="button" data-nav="replay">回放</button>
       <button type="button" data-nav="analyze">分析</button>
       <button type="button" data-nav="rank">段位</button>
       <button type="button" data-nav="settings">設定</button>
