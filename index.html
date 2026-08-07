@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0F14" />
+  <meta name="description" content="Apex Trade Lab — 真實行情零風險永續模擬練習" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="APEX" />
+  <link rel="manifest" href="apex.webmanifest" />
+  <title>APEX — Trade Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="apex.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <div id="splash" class="splash">
+    <div class="splash-atmosphere" aria-hidden="true"></div>
+    <div class="splash-inner">
+      <div class="splash-mark">APEX</div>
+      <p class="splash-sub">真實行情 · 零風險練習</p>
+      <p class="splash-tag">Trade Lab · 鋒</p>
+      <button type="button" class="btn accent" id="btnEnter">開始練習</button>
+      <p class="splash-disc">模擬資金 · 非真實交易 · Not affiliated with Bybit</p>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="chrome">
+      <div class="brand">APEX</div>
+      <div class="symbols" id="symbolTabs"></div>
+      <div class="ticker-strip" id="tickerStrip">—</div>
+      <div class="chrome-right">
+        <span class="pill warn" id="demoPill">模擬資金 · 非真實交易</span>
+        <span class="pill" id="connPill">connecting</span>
+        <span class="pill muted" id="srcPill">—</span>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="view active" data-view="trade" id="view-trade">
+        <div class="trade-grid">
+          <div class="chart-pane">
+            <div class="intervals" id="intervals"></div>
+            <div id="chart" class="chart"></div>
+            <div class="book-trades" id="bookTrades">
+              <div class="book" id="book"></div>
+              <div class="trades" id="recentTrades"></div>
+            </div>
+            <button type="button" class="text-btn" id="toggleBook">顯示訂單簿／成交</button>
+          </div>
+          <aside class="order-pane">
+            <div class="equity-bar" id="equityBar"></div>
+            <form id="orderForm" class="order-form" autocomplete="off">
+              <div class="row">
+                <label>槓桿 <span id="levVal">5x</span></label>
+                <input type="range" id="leverage" min="1" max="50" value="5" />
+              </div>
+              <div class="seg" id="ordTypeSeg">
+                <button type="button" data-type="market" class="active">市價</button>
+                <button type="button" data-type="limit">限價</button>
+              </div>
+              <label class="field">數量
+                <input type="number" id="qty" step="any" min="0" placeholder="0.001" />
+              </label>
+              <div class="size-chips" id="sizeChips" aria-label="倉位比例">
+                <button type="button" data-pct="10">10%</button>
+                <button type="button" data-pct="25">25%</button>
+                <button type="button" data-pct="50">50%</button>
+                <button type="button" data-pct="100">100%</button>
+              </div>
+              <label class="field limit-only hidden">限價
+                <input type="number" id="limitPrice" step="any" min="0" />
+              </label>
+              <div class="row checks">
+                <label><input type="checkbox" id="useTp" /> TP</label>
+                <input type="number" id="tp" step="any" class="mini" disabled />
+                <label><input type="checkbox" id="useSl" /> SL</label>
+                <input type="number" id="sl" step="any" class="mini" disabled />
+              </div>
+              <label class="row checks"><input type="checkbox" id="reduceOnly" /> Reduce-Only（只減倉）</label>
+              <p class="summary" id="preSummary">—</p>
+              <div class="side-actions">
+                <button type="submit" class="btn long" data-side="long" id="btnLong">Long 做多</button>
+                <button type="submit" class="btn short" data-side="short" id="btnShort">Short 做空</button>
+              </div>
+              <button type="button" class="btn ghost" id="btnClose">市價平倉</button>
+            </form>
+          </aside>
+        </div>
+        <div class="bottom-tabs">
+          <div class="tab-heads" id="posTabHeads">
+            <button type="button" class="active" data-tab="positions">倉位</button>
+            <button type="button" data-tab="orders">掛單</button>
+            <button type="button" data-tab="history">歷史</button>
+          </div>
+          <div class="tab-body" id="posTabBody"></div>
+        </div>
+        <button type="button" class="fab-order" id="fabOrder">下單</button>
+      </section>
+
+      <section class="view" data-view="portfolio" id="view-portfolio"></section>
+      <section class="view" data-view="analyze" id="view-analyze"></section>
+      <section class="view" data-view="rank" id="view-rank"></section>
+      <section class="view" data-view="settings" id="view-settings"></section>
+    </main>
+
+    <nav class="nav" aria-label="主導覽">
+      <button type="button" data-nav="trade" class="active">Trade</button>
+      <button type="button" data-nav="portfolio">Portfolio</button>
+      <button type="button" data-nav="analyze">Analyze</button>
+      <button type="button" data-nav="rank">Rank</button>
+      <button type="button" data-nav="settings">More</button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="drawer-backdrop hidden" id="drawerBackdrop">
+    <div class="drawer" id="orderDrawer"></div>
+  </div>
+  <div class="coach hidden" id="coach"></div>
+
+  <footer class="footer-disc">
+    Apex Trade Lab 為個人模擬練習工具，唔係投資建議。Not affiliated with Bybit。
+    模擬撮合／手續費／強平可能與真實交易所不同。成績僅反映本機練習表現。
+  </footer>
+
+  <script type="module" src="apex.js"></script>
+</body>
+</html>
