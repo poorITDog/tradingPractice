@@ -1,6 +1,7 @@
-# Trade Study Lab（鋒學）
+# 火狗trade
 
-Standalone static web app that reorganizes the Anki deck **03_Trading** (118 cards) into **9 structured chapters** with lessons, flashcards, SRS review, and chapter quizzes.
+Standalone static web app for studying with tutor **火狗**.  
+Reorganizes the Anki deck **03_Trading** (118 cards you wrote) into **9 structured chapters** with clearer flashcards, harder exams, and a few careful SVG chart questions.
 
 ## Open locally
 
@@ -15,17 +16,19 @@ Then open: [http://localhost:8765/study/](http://localhost:8765/study/)
 ## Study loop
 
 1. Open a chapter (prerequisites must be passed; Ch5 is optional and never blocks)
-2. Read intro → objectives → chart tip → glossary terms
-3. Drill flashcards (Again / Good → local SRS queue)
-4. Take chapter quiz (≥80% to pass and unlock next)
+2. Read intro → objectives → chart tip
+3. Drill flashcards (Again / Good → local SRS queue) — copy rewritten into clear sentences
+4. Take **chapter exam** (≥80%): scenario MCQ, true/false, sequence, optional graph label
 5. Use **複習佇列** for due cards across chapters
 
-## Source
+## Exams
 
-- Imported from `03_Trading.apkg`
-- Curriculum locked in `data/curriculum.json` + `CURRICULUM.md`
-- Some cards corrected vs original Anki (RSI 超買超賣, MACD wording, empty-back auction card, DST note)
+- Question bank lives in each chapter’s `quizItems` (not raw flashcard backs)
+- Harder application prompts; short labeled choices
+- Graph questions: schematic SVG only (BOS/CHoCH, FVG, 假火, OLHC) — max 1 per chapter, few app-wide
 
-## Privacy
+## Source / privacy
 
-Progress stays in `localStorage` key `trade-study-lab-v1`. No server, no account.
+- Imported from `03_Trading.apkg`; originals kept as `originalFront` / `originalBack`
+- Progress in `localStorage` key `trade-study-lab-v1` (unchanged so your SRS is kept)
+- No server, no account

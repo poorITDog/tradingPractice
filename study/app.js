@@ -1,4 +1,4 @@
-// Trade Study Lab — structured lessons from Anki 03_Trading.
+// 火狗trade — structured lessons from Anki 03_Trading (tutor: 火狗).
 
 const STORAGE_KEY = 'trade-study-lab-v1';
 const DAY_MS = 86400000;
@@ -193,10 +193,12 @@ function renderHome() {
   const passed = Object.keys(progress.chapterPassed).length;
   const due = dueCards().length;
   const seen = curriculum.cards.filter((c) => cardState(c.id).seen).length;
+  const brand = curriculum.brand?.name || '火狗trade';
+  const tutor = curriculum.brand?.tutor || '火狗';
   main.innerHTML = `
     <section class="hero">
-      <h1>鋒學</h1>
-      <p>把雜亂 Anki「03_Trading」重組成 ${curriculum.chapters.length} 章結構化課：學完再測，測完先解鎖下一章。</p>
+      <h1>${escapeHtml(brand)}</h1>
+      <p>跟住導師${escapeHtml(tutor)}嘅框架學交易：把你寫嘅 Anki「03_Trading」清清楚楚重組成 ${curriculum.chapters.length} 章課。學完再考應用題，測完先解鎖下一章。</p>
       <div class="stats">
         <span>進度 <b>${seen}/${curriculum.cardCount}</b></span>
         <span>已通關 <b>${passed}</b> 章</span>
@@ -277,7 +279,7 @@ function renderChapter(id) {
     <div class="actions">
       <button type="button" class="primary" id="drillAll">整章閃卡</button>
       <button type="button" class="primary" id="startQuiz" ${canQuiz ? '' : 'disabled'}
-        title="${canQuiz ? '開始測驗' : '請先翻完本章所有閃卡'}">章節測驗（≥80%）</button>
+        title="${canQuiz ? '開始考試' : '請先翻完本章所有閃卡'}">章節考試（應用題 ≥80%）</button>
       <button type="button" class="ghost" id="toGlossary">術語表</button>
     </div>
     <p class="muted" style="font-size:12px">流程：簡介 → 術語 → 提示 → 閃卡 → 測驗。時區提醒：${escapeHtml(curriculum.timezoneNote)}</p>
@@ -346,14 +348,17 @@ function renderDrill() {
   $('#good').onclick = () => grade('good');
 }
 
-function buildMcq(card, pool) {
-  const correct = card.back;
-  const distractors = shuffle(
-    pool.filter((x) => x.id !== card.id && x.quizEligible).map((x) => x.back),
-  ).filter((b) => b && b !== correct).slice(0, 3);
-  while (distractors.length < 3) distractors.push('（干擾項不足）請選最接近正確嘅答案');
-  const choices = shuffle([correct, ...distractors.slice(0, 3)]);
-  return { prompt: card.front, choices, answer: correct, card };
+function pickQuizItems(ch) {
+  const bank = Array.isArray(ch.quizItems) ? [...ch.quizItems] : [];
+  const target = curriculum.quizRules?.chapterQuestionCount || 10;
+  const graphs = bank.filter((q) => q.type === 'graph_label' && q.graph);
+  const others = bank.filter((q) => q.type !== 'graph_label');
+  const maxGraph = curriculum.quizRules?.maxGraphPerChapter ?? 1;
+  const pickedGraphs = shuffle(graphs).slice(0, maxGraph);
+  const need = Math.max(0, Math.min(target, bank.length) - pickedGraphs.length);
+  const pickedOthers = shuffle(others).slice(0, need);
+  const items = shuffle([...pickedGraphs, ...pickedOthers]);
+  return items.length ? items : null;
 }
 
 function startQuiz(chId) {
@@ -363,15 +368,14 @@ function startQuiz(chId) {
     toast('請先完成整章閃卡');
     return go(`#/chapter/${chId}`);
   }
-  const pool = cardsOf(chId).filter((c) => c.quizEligible);
-  const pick = shuffle(pool).slice(0, Math.min(8, pool.length));
-  if (pick.length < 3) {
-    toast('可測驗卡片不足');
+  const items = pickQuizItems(ch);
+  if (!items || items.length < 3) {
+    toast('本章測驗題庫不足');
     return go(`#/chapter/${chId}`);
   }
   quiz = {
     chId,
-    items: pick.map((c) => buildMcq(c, pool)),
+    items,
     i: 0,
     correct: 0,
     answered: false,
@@ -390,7 +394,7 @@ function renderQuiz() {
     }
     main.innerHTML = `
       <section class="hero">
-        <h1>測驗結果 · ${pct}%</h1>
+        <h1>考試結果 · ${pct}%</h1>
         <p>${pass ? '通關！下一章已可解鎖（可選章唔會擋路）。' : `未達 ${curriculum.mastery.passQuizPct}% ，返去再練再考。`}</p>
         <div class="actions">
           <button type="button" class="primary" id="quizDone">返回章節</button>
@@ -402,14 +406,30 @@ function renderQuiz() {
     return;
   }
   const item = quiz.items[quiz.i];
+  const typeLab = {
+    definition_mcq: '情境選擇',
+    sequence_order: '步驟排序',
+    true_false: '是非題',
+    graph_label: '圖表應用',
+  }[item.type] || item.type;
+  const diffLab = item.difficulty === 'hard' ? '難題' : '中等';
+  const graphHtml = item.graph?.svg
+    ? `<figure class="quiz-graph">
+        <div class="quiz-graph-svg" aria-label="${escapeHtml(item.graph.alt || '測驗圖表')}">${item.graph.svg}</div>
+        <figcaption class="muted">${escapeHtml(item.graph.alt || '')}</figcaption>
+      </figure>`
+    : '';
   main.innerHTML = `
-    <div class="section-title">測驗 ${quiz.i + 1}/${quiz.items.length} · 答對 ${quiz.correct}</div>
+    <div class="section-title">考試 ${quiz.i + 1}/${quiz.items.length} · 答對 ${quiz.correct}
+      · <span class="badge">${typeLab}</span> <span class="badge">${diffLab}</span></div>
     <div class="panel">
       <h3>${escapeHtml(item.prompt)}</h3>
+      ${graphHtml}
       <div class="choice" id="choices">
         ${item.choices.map((ch, idx) =>
     `<button type="button" data-idx="${idx}">${escapeHtml(ch)}</button>`).join('')}
       </div>
+      <p class="muted explain hidden" id="explain" style="margin-top:10px;font-size:13px"></p>
     </div>`;
   $('#choices').onclick = (e) => {
     const b = e.target.closest('button[data-idx]');
@@ -418,18 +438,22 @@ function renderQuiz() {
     const chosen = item.choices[Number(b.dataset.idx)];
     const ok = chosen === item.answer;
     if (ok) quiz.correct += 1;
-    scheduleCard(item.card.id, ok ? 'good' : 'again');
     [...$('#choices').children].forEach((btn) => {
       const t = item.choices[Number(btn.dataset.idx)];
       if (t === item.answer) btn.classList.add('correct');
       else if (btn === b && !ok) btn.classList.add('wrong');
       btn.disabled = true;
     });
+    const ex = $('#explain');
+    if (ex && item.explain) {
+      ex.textContent = (ok ? '正確。' : '唔啱。') + item.explain;
+      ex.classList.remove('hidden');
+    }
     setTimeout(() => {
       quiz.i += 1;
       quiz.answered = false;
       renderQuiz();
-    }, 700);
+    }, ok ? 650 : 1100);
   };
 }
 

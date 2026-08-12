@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "title": "Trade Study Lab",
+  "title": "火狗trade",
   "source": "03_Trading.apkg",
   "cardCount": 118,
   "timezoneNote": "時間打火以 America/New_York 為準；夏令 EDT(UTC-4)；標準 EST(UTC-5) 各點 +1 小時。",
@@ -41,9 +41,14 @@
     "types": [
       "definition_mcq",
       "sequence_order",
-      "true_false"
+      "true_false",
+      "graph_label"
     ],
-    "onlyQuizEligible": true
+    "onlyQuizEligible": true,
+    "chapterQuestionCount": 10,
+    "hardRatioHint": 0.5,
+    "maxGraphPerChapter": 1,
+    "maxGraphAppWide": 6
   },
   "lessonMicroFlow": [
     "intro",
@@ -183,7 +188,153 @@
       ],
       "intro": "先建立「市場有週期、趨勢有層級」嘅大腦模型。道氏理論同四階段幫你唔好喺狂熱期當突破、喺吸籌期當死亡。",
       "cardCount": 8,
-      "example": "睇日線：若價格創高但成交量萎縮，對照道氏「量價互證」——趨勢可能進入派發而非新主升。"
+      "example": "睇日線：若價格創高但成交量萎縮，對照道氏「量價互證」——趨勢可能進入派發而非新主升。",
+      "quizItems": [
+        {
+          "id": "ch1_q01",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "日線連續創新高，但成交量逐段萎縮，而指數仍同步上行。你應點解讀道氏「量價互證」？",
+          "choices": [
+            "A. 主升延續，量縮只係洗盤",
+            "B. 趨勢動能轉弱，可能進入派發而非健康主升",
+            "C. 量縮代表散戶離場，機構必買",
+            "D. 與道氏無關，只看結構"
+          ],
+          "answer": "B. 趨勢動能轉弱，可能進入派發而非健康主升",
+          "explain": "道氏要求量隨價升；價升量縮暗示上升無力。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q02",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "你喺橫盤底部見到價格波幅收窄、成交量漸減，媒體仍悲觀。最接近邊個市場階段？",
+          "choices": [
+            "A. 公眾狂熱期",
+            "B. 吸籌期",
+            "C. 恐慌拋售",
+            "D. 派發頂部"
+          ],
+          "answer": "B. 吸籌期",
+          "explain": "吸籌期特徵係價量縮小、聰明錢悄然建倉。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q03",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "次級趨勢（secondary trend）嘅主要功能係消化買賣、換手，幫市場為下一波主趨勢蓄力。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "次級趨勢即橫盤消化，係道氏三層趨勢中間層。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q04",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "牛市公眾參與期尾段：媒體極度正面、人人追買、量價齊放。你應採取咩策略心態？",
+          "choices": [
+            "A. 加倉追最後一浪",
+            "B. 警惕狂熱期，唔好當突破必追",
+            "C. 忽略週期，只看 5 分鐘圖",
+            "D. 空倉等崩盤"
+          ],
+          "answer": "B. 警惕狂熱期，唔好當突破必追",
+          "explain": "道氏四階段：狂熱追買後常接派發。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q05",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "道氏理論中，完整市場週期由四階段組成。邊個次序正確？",
+          "choices": [
+            "A. 吸籌→上升→派發→下跌",
+            "B. 上升→吸籌→下跌→派發",
+            "C. 派發→吸籌→上升→下跌",
+            "D. 下跌→派發→吸籌→上升"
+          ],
+          "answer": "A. 吸籌→上升→派發→下跌",
+          "explain": "四階段循環：accumulation→uptrend→distribution→downtrend。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q06",
+          "type": "true_false",
+          "difficulty": "medium",
+          "prompt": "道氏認為趨勢會一直延續，直到出現顯著嘅 CHoCH 或反證訊號先會改變。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "趨勢持續直至顯著轉勢，係道氏核心之一。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q07",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "用「一日人生」比喻：傍晚伸懶腰、精神漸復，對應市場邊個狀態？",
+          "choices": [
+            "A. 中午玩完極度疲勞",
+            "B. 吸籌期尾段，為夜晚再精神鋪路",
+            "C. 恐慌拋售",
+            "D. 派發完結"
+          ],
+          "answer": "B. 吸籌期尾段，為夜晚再精神鋪路",
+          "explain": "傍晚伸懶腰對應吸籌，之後「晚上又精神」係主升。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q08",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "道氏三層趨勢由大到小，正確層級次序係？",
+          "choices": [
+            "A. 主趨勢→次級趨勢→超短期波",
+            "B. 超短期→次級→主趨勢",
+            "C. 次級→主趨勢→超短期",
+            "D. 主趨勢→超短期→次級"
+          ],
+          "answer": "A. 主趨勢→次級趨勢→超短期波",
+          "explain": "即 HTF primary、secondary、minor movement。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q09",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "派發期最常見嘅量價組合係？",
+          "choices": [
+            "A. 價升量增",
+            "B. 價橫或慢升、量縮、聰明錢出貨",
+            "C. 價跌量縮",
+            "D. 價跌量增"
+          ],
+          "answer": "B. 價橫或慢升、量縮、聰明錢出貨",
+          "explain": "派發：升勢放緩、量縮、機構散貨。",
+          "graph": null
+        },
+        {
+          "id": "ch1_q10",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "知道而家處於邊個趨勢階段，可以幫你揀唔同策略同辨識轉折，而唔係用同一套打法。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "唔同階段要用唔同策略，係市場四階段教學重點。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch2",
@@ -213,7 +364,158 @@
       ],
       "intro": "學識用 BOS／CHoCH 講結構，用流動性解釋點解假突破常見。呢章係後面打火同 FVG 嘅先修。",
       "cardCount": 9,
-      "example": "上升結構：破前高=BOS；若突然破最近強低=CHoCH。假突破常發生在外部流動性（舊高低點）。"
+      "example": "上升結構：破前高=BOS；若突然破最近強低=CHoCH。假突破常發生在外部流動性（舊高低點）。",
+      "quizItems": [
+        {
+          "id": "ch2_q01",
+          "type": "graph_label",
+          "difficulty": "hard",
+          "prompt": "圖中標「?」嘅突破（破弱高但尚未破強低），喺上升結構入面應稱為？",
+          "choices": [
+            "A. CHoCH（轉勢）",
+            "B. BOS（順勢破結構）",
+            "C. 假突破",
+            "D. CISD"
+          ],
+          "answer": "B. BOS（順勢破結構）",
+          "explain": "上升結構中破弱高為 BOS，強低未破。",
+          "graph": {
+            "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 160'><rect width='320' height='160' fill='#0f1419'/><line x1='20' y1='130' x2='300' y2='130' stroke='#334' stroke-width='1'/><text x='24' y='148' fill='#8899aa' font-size='10'>時間→</text><line x1='60' y1='100' x2='60' y2='70' stroke='#4ade80' stroke-width='2'/><rect x='54' y='80' width='12' height='20' fill='#4ade80'/><line x1='100' y1='85' x2='100' y2='55' stroke='#4ade80' stroke-width='2'/><rect x='94' y='65' width='12' height='20' fill='#4ade80'/><line x1='140' y1='60' x2='140' y2='40' stroke='#4ade80' stroke-width='2'/><rect x='134' y='50' width='12' height='18' fill='#4ade80'/><line x1='180' y1='55' x2='180' y2='75' stroke='#f87171' stroke-width='2'/><rect x='174' y='60' width='12' height='15' fill='#f87171'/><line x1='220' y1='70' x2='220' y2='95' stroke='#f87171' stroke-width='2'/><rect x='214' y='78' width='12' height='17' fill='#f87171'/><line x1='260' y1='90' x2='260' y2='110' stroke='#f87171' stroke-width='2'/><rect x='254' y='98' width='12' height='12' fill='#f87171'/><line x1='40' y1='75' x2='280' y2='75' stroke='#fbbf24' stroke-dasharray='4 3' stroke-width='1'/><text x='42' y='68' fill='#fbbf24' font-size='9'>強低</text><line x1='120' y1='38' x2='280' y2='38' stroke='#60a5fa' stroke-dasharray='4 3' stroke-width='1'/><text x='122' y='32' fill='#60a5fa' font-size='9'>弱高</text><circle cx='140' cy='40' r='5' fill='none' stroke='#fff' stroke-width='1.5'/><text x='148' y='44' fill='#fff' font-size='11' font-weight='bold'>?</text></svg>",
+            "alt": "上升結構中破弱高為 BOS，強低未破。"
+          }
+        },
+        {
+          "id": "ch2_q02",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "上升趨勢中，價格突然跌破最近嘅強低（strong low）。你應點標記？",
+          "choices": [
+            "A. BOS",
+            "B. CHoCH",
+            "C. 外部流動性獵殺",
+            "D. FVG"
+          ],
+          "answer": "B. CHoCH",
+          "explain": "破強低＝CHoCH，代表可能轉勢。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q03",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "價格掃過前日高低點止損後迅速收回。最可能係邊種流動性？",
+          "choices": [
+            "A. 內部流動性（DOL）",
+            "B. 外部流動性（舊高低）",
+            "C. POC",
+            "D. VWAP node"
+          ],
+          "answer": "B. 外部流動性（舊高低）",
+          "explain": "假突破常獵殺外部流動性即舊高低點。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q04",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "Fib 0.5 為 equilibrium；高於 0.5 為 premium（偏空），低於 0.5 為 discount（偏多）。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "premium/discount 以 0.5 均衡位劃分。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q05",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "BTC 創新高但 ETH 出 lower high，兩者高度相關。SMT 背離暗示？",
+          "choices": [
+            "A. 看漲延續",
+            "B. 偏空，領先市場可能轉弱",
+            "C. 無意義",
+            "D. 必須立即做空"
+          ],
+          "answer": "B. 偏空，領先市場可能轉弱",
+          "explain": "A higher high、B lower high＝bearish SMT。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q06",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "下跌開始時，若陽線升返過下跌起始陰線開盤價，最早嘅轉勢標誌叫？",
+          "choices": [
+            "A. BOS",
+            "B. CHoCH",
+            "C. CISD",
+            "D. FVG"
+          ],
+          "answer": "C. CISD",
+          "explain": "CISD＝change in state of delivery，早期轉勢信號。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q07",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "你想做多，價格喺 Fib 0.786 上方 premium 區。按課程邏輯應點做？",
+          "choices": [
+            "A. premium 更適合買入",
+            "B. 等回踩 discount 或結構確認再考慮",
+            "C. premium 一定做空",
+            "D. 忽略 Fib"
+          ],
+          "answer": "B. 等回踩 discount 或結構確認再考慮",
+          "explain": "discount 偏多、premium 偏空，唔係絕對但係區位參考。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q08",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "1.272 同 1.13 延伸位有機會出現假火，唔應盲目當突破追入。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "Fib 延伸位常見假突破／假火。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q09",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "分析結構時，邊個次序最合理？",
+          "choices": [
+            "A. 標 HTF 方向→辨 BOS/CHoCH→搵流動性→定 premium/discount",
+            "B. 先入場→再搵結構",
+            "C. 只看 RSI→忽略結構",
+            "D. 逢高低點必反手"
+          ],
+          "answer": "A. 標 HTF 方向→辨 BOS/CHoCH→搵流動性→定 premium/discount",
+          "explain": "結構先行，流動性同區位輔助。",
+          "graph": null
+        },
+        {
+          "id": "ch2_q10",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "內部流動性（internal/DOL）主要指？",
+          "choices": [
+            "A. 前日高低",
+            "B. 趨勢內部波段高低",
+            "C. 開市價",
+            "D. 資金費率"
+          ],
+          "answer": "B. 趨勢內部波段高低",
+          "explain": "DOL＝打內部流動性，與外部舊高低相對。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch3",
@@ -243,7 +545,158 @@
       ],
       "intro": "機構足跡：失衡（FVG）同訂單塊（OB）。重點係動力確認同 HTF POI，唔好逢空必買。",
       "cardCount": 11,
-      "example": "大升前最後陰線=看漲 OB；三連 K 中間空隙=FVG。回踩時先問：呢個係動力確認定只係空隙迷信？"
+      "example": "大升前最後陰線=看漲 OB；三連 K 中間空隙=FVG。回踩時先問：呢個係動力確認定只係空隙迷信？",
+      "quizItems": [
+        {
+          "id": "ch3_q01",
+          "type": "graph_label",
+          "difficulty": "hard",
+          "prompt": "圖中紫色陰影區（三根陽線中間空隙）應標記為？",
+          "choices": [
+            "A. Order Block",
+            "B. Fair Value Gap（FVG）",
+            "C. Breaker Block",
+            "D. HVN"
+          ],
+          "answer": "B. Fair Value Gap（FVG）",
+          "explain": "三連 K 中間棒影線唔重疊形成嘅失衡空隙。",
+          "graph": {
+            "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 160'><rect width='320' height='160' fill='#0f1419'/><line x1='50' y1='110' x2='50' y2='80' stroke='#4ade80' stroke-width='2'/><rect x='44' y='90' width='14' height='20' fill='#4ade80'/><line x1='110' y1='75' x2='110' y2='45' stroke='#4ade80' stroke-width='2'/><rect x='104' y='55' width='14' height='20' fill='#4ade80'/><line x1='170' y1='50' x2='170' y2='70' stroke='#4ade80' stroke-width='2'/><rect x='164' y='58' width='14' height='12' fill='#4ade80'/><rect x='68' y='58' width='70' height='22' fill='#a78bfa' opacity='0.35' stroke='#a78bfa' stroke-width='1'/><text x='72' y='54' fill='#c4b5fd' font-size='9'>?</text><line x1='230' y1='65' x2='230' y2='40' stroke='#4ade80' stroke-width='2'/><rect x='224' y='48' width='14' height='17' fill='#4ade80'/></svg>",
+            "alt": "三連陽線中間棒影線唔重疊形成嘅失衡空隙。"
+          }
+        },
+        {
+          "id": "ch3_q02",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "大升前最後一根陰線，之後價格急速向上。呢根陰線最可能係？",
+          "choices": [
+            "A. 看跌 OB",
+            "B. 看漲 OB",
+            "C. Breaker",
+            "D. LVN"
+          ],
+          "answer": "B. 看漲 OB",
+          "explain": "大行情前最後反向 K＝OB；大升前最後陰線＝看漲 OB。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q03",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "原本 OB 被價格超越後角色反轉，變成？",
+          "choices": [
+            "A. iFVG",
+            "B. Breaker Block",
+            "C. POC",
+            "D. Anchor candle"
+          ],
+          "answer": "B. Breaker Block",
+          "explain": "OB 被超越後變 breaker。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q04",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "FVG 真正用意係動力確認，唔係逢空隙必買。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "課程強調 FVG＝動力 confirm，非迷信。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q05",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "兩個不同 FVG 重疊區域（iFVG）比單一 FVG 更強，因為？",
+          "choices": [
+            "A. 顏色更深",
+            "B. 要極大動能先可以穿越雙重失衡",
+            "C. 一定會填補",
+            "D. 等同 OB"
+          ],
+          "answer": "B. 要極大動能先可以穿越雙重失衡",
+          "explain": "iFVG 重疊需更大力量突破。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q06",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "評估回踩入場時，邊個次序最符合課程？",
+          "choices": [
+            "A. 確認 HTF POI→等回踩 FVG/OB→驗證 reject 同動力",
+            "B. 見空隙就買",
+            "C. 忽略 HTF 直接做 LTF",
+            "D. 只睇資金費率"
+          ],
+          "answer": "A. 確認 HTF POI→等回踩 FVG/OB→驗證 reject 同動力",
+          "explain": "HTF POI 優先，再驗證機構足跡。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q07",
+          "type": "true_false",
+          "difficulty": "medium",
+          "prompt": "最有價值嘅 FVG 往往伴隨 liquidity grab（獵殺流動性）。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "有 liquidity grab 嘅 FVG 更有價值。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q08",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "價格回踩 FVG 但無 reject，反而喺 VWAP node 受阻。你應點理解？",
+          "choices": [
+            "A. FVG 失效，可能 VWAP node 先係真正阻力",
+            "B. 必須硬買 FVG",
+            "C. FVG 同 VWAP 互斥",
+            "D. 忽略兩者"
+          ],
+          "answer": "A. FVG 失效，可能 VWAP node 先係真正阻力",
+          "explain": "有時 reject 發生喺 VWAP node 而非 FVG。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q09",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "「自然反彈高點」通常意味？",
+          "choices": [
+            "A. 永遠唔會再測",
+            "B. 大插針後反彈高點，大機會被掃上再回落",
+            "C. 一定突破",
+            "D. 等同 POC"
+          ],
+          "answer": "B. 大插針後反彈高點，大機會被掃上再回落",
+          "explain": "自然反彈高點常被獵殺流動性。",
+          "graph": null
+        },
+        {
+          "id": "ch3_q10",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "OB 同 FVG 同時出現且動力確認，課程稱之為？",
+          "choices": [
+            "A. 噴火龍",
+            "B. 彈簧床",
+            "C. Sky trap",
+            "D. 黏黏天花板"
+          ],
+          "answer": "A. 噴火龍",
+          "explain": "OB+FVG 組合＝噴火龍。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch4",
@@ -286,7 +739,155 @@
       ],
       "intro": "量價、Volume Profile 同拍賣理論，用來驗證突破真假。衍生品數據只係背景，唔係信號聖杯。",
       "cardCount": 20,
-      "example": "突破若價升量縮／CVD 背離，拍賣可能失敗。HVN 像地板／天花；LVN 像快速通道。"
+      "example": "突破若價升量縮／CVD 背離，拍賣可能失敗。HVN 像地板／天花；LVN 像快速通道。",
+      "quizItems": [
+        {
+          "id": "ch4_q01",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "價格突破區間上沿，但成交量無明顯增加、Delta 無變化。拍賣理論點解讀？",
+          "choices": [
+            "A. 拍賣成功",
+            "B. 拍賣失敗，可能 significant reject",
+            "C. 必須追多",
+            "D. 與量能無關"
+          ],
+          "answer": "B. 拍賣失敗，可能 significant reject",
+          "explain": "突破無量無 delta 變化＝拍賣失敗。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q02",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "價格下跌但 CVD 向上（淨買入增加），代表？",
+          "choices": [
+            "A. 賣出吸納",
+            "B. 買入吸納（低位被動接貨）",
+            "C. 無意義",
+            "D. 必跌"
+          ],
+          "answer": "B. 買入吸納（低位被動接貨）",
+          "explain": "價跌 CVD 升＝bullish absorption。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q03",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "HVN 係成交密集區，可成支撐或阻力；LVN 係稀疏區，價格常快速穿越。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "HVN/LVN 定義同行為符合課程。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q04",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "上升趨勢中價格回調至 HVN，課程「魔法彈彈雲」暗示？",
+          "choices": [
+            "A. 一定做空",
+            "B. 前提係 uptrend，HVN 有機會成支撐做多",
+            "C. 忽略 HVN",
+            "D. 只適用下跌"
+          ],
+          "answer": "B. 前提係 uptrend，HVN 有機會成支撐做多",
+          "explain": "魔法彈彈雲：uptrend 回踩 HVN 做多機會。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q05",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "放 Volume Profile 嘅合理步驟？",
+          "choices": [
+            "A. 選主 swing→必要時加半個 swing",
+            "B. 隨機選 10 根 K",
+            "C. 只用開市第一根",
+            "D. 忽略 swing"
+          ],
+          "answer": "A. 選主 swing→必要時加半個 swing",
+          "explain": "VP 放置：main swing 或 main+half swing。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q06",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "資金費率 +0.15%（8 小時），課程建議？",
+          "choices": [
+            "A. 正常忽略",
+            "B. 可 confirm 套利機會",
+            "C. 一定做空",
+            "D. 一定做多"
+          ],
+          "answer": "B. 可 confirm 套利機會",
+          "explain": "0.15–0.2 可 confirm 套利。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q07",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "價升量縮代表上升無力，與量價互證背離。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "vol don price up＝賣方無力支撐。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q08",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "用 VP 搵 FVG：pre swing low 到 current swing high 做 VP，LVN 區可當？",
+          "choices": [
+            "A. OB",
+            "B. FVG 參考區",
+            "C. 資金費率",
+            "D. T1 anchor"
+          ],
+          "answer": "B. FVG 參考區",
+          "explain": "LVN 可作 FVG 參考，回踩需過 50% 再考慮。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q09",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "拍賣成功嘅特徵次序？",
+          "choices": [
+            "A. 量大幅增加→價格被接受→delta 明顯變化→難以返回區間",
+            "B. 無量突破→立即返回",
+            "C. 只睇 OI",
+            "D. 費率為零"
+          ],
+          "answer": "A. 量大幅增加→價格被接受→delta 明顯變化→難以返回區間",
+          "explain": "拍賣成功需量、價、delta 配合。",
+          "graph": null
+        },
+        {
+          "id": "ch4_q10",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "下跌趨勢中價格反弹至 HVN 受阻，「黏黏天花板」意味？",
+          "choices": [
+            "A. 必破上行",
+            "B. downtrend 中 HVN 可能成阻力，痴唔住就落",
+            "C. 做多信號",
+            "D. 與 VP 無關"
+          ],
+          "answer": "B. downtrend 中 HVN 可能成阻力，痴唔住就落",
+          "explain": "黏黏天花板適用於下跌趨勢回踩 HVN。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch5",
@@ -314,7 +915,153 @@
       ],
       "intro": "可選章：MACD／RSI／ATR／均線／VWAP。只作確認，永遠服從結構同量價。",
       "cardCount": 6,
-      "example": "只用 RSI／MACD 確認結構訊號：結構偏多 + RSI 未背離 → 加分；指標單獨喊單 → 忽略。"
+      "example": "只用 RSI／MACD 確認結構訊號：結構偏多 + RSI 未背離 → 加分；指標單獨喊單 → 忽略。",
+      "quizItems": [
+        {
+          "id": "ch5_q01",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "結構偏多、BOS 確認，但 RSI 價創新高而 RSI 未創新高。你應點用指標？",
+          "choices": [
+            "A. 指標單獨喊空，忽略結構",
+            "B. RSI 背離作減倉或謹慎確認，仍服從結構",
+            "C. 必須立即反手",
+            "D. 指標優先於一切"
+          ],
+          "answer": "B. RSI 背離作減倉或謹慎確認，仍服從結構",
+          "explain": "指標只作確認，結構為主。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q02",
+          "type": "true_false",
+          "difficulty": "medium",
+          "prompt": "MACD 0 軸上金叉偏多；0 軸下金叉多為反弹，需慎追。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "MACD 0 軸位置決定金叉信號強弱。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q03",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "ATR 低時出現突破，課程提醒？",
+          "choices": [
+            "A. 一定真突破",
+            "B. 可能 fake breakout，需結構同量價確認",
+            "C. 忽略 ATR",
+            "D. 必須加倉"
+          ],
+          "answer": "B. 可能 fake breakout，需結構同量價確認",
+          "explain": "ATR low + breakout 可能假突破。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q04",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "RSI >70 代表？",
+          "choices": [
+            "A. 超賣",
+            "B. 超買（非超賣）",
+            "C. 中性",
+            "D. 必跌"
+          ],
+          "answer": "B. 超買（非超賣）",
+          "explain": "課程已校正：>70 超買，<30 超賣。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q05",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "指標使用優先次序（課程立場）？",
+          "choices": [
+            "A. 結構同量價→指標確認加分",
+            "B. 指標先行→結構跟隨",
+            "C. 只睇 VWAP",
+            "D. 隨機組合"
+          ],
+          "answer": "A. 結構同量價→指標確認加分",
+          "explain": "指標永遠服從結構同量價。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q06",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "價格持續喺 200 EMA 上方且穩定，可輔助判斷長期偏多。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "200 EMA 上方 consistently＝uptrend 輔助。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q07",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "MACD 背離：價格創新低但 MACD 走高，暗示？",
+          "choices": [
+            "A. 賣力轉弱，偏多觀察",
+            "B. 必跌",
+            "C. 無意義",
+            "D. 超買"
+          ],
+          "answer": "A. 賣力轉弱，偏多觀察",
+          "explain": "price down MACD up＝buy 背離信號。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q08",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "ATR 上升配合價格突破，相對 ATR 低時突破？",
+          "choices": [
+            "A. 更可能係真突破",
+            "B. 一定假突破",
+            "C. 與 ATR 無關",
+            "D. 只做震盪"
+          ],
+          "answer": "A. 更可能係真突破",
+          "explain": "ATR up + breakout 較像 true breakout。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q09",
+          "type": "true_false",
+          "difficulty": "medium",
+          "prompt": "VWAP 同 TWAP 係成交量加權同時間加權平均價，可作機構成交參考。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "VWAP/TWAP 定義正確。",
+          "graph": null
+        },
+        {
+          "id": "ch5_q10",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "Ch5 可選章嘅正確定位？",
+          "choices": [
+            "A. 指標作主策略",
+            "B. 指標只確認，不作主策略",
+            "C. 取代 Ch2 結構",
+            "D. 必考先解鎖"
+          ],
+          "answer": "B. 指標只確認，不作主策略",
+          "explain": "Ch5 optional，指標只作確認。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch6",
@@ -349,7 +1096,158 @@
       ],
       "intro": "空間打火：喺關鍵位置做誘騙再反向。學 OHLC／OLHC 同四步流程，再接火狗彈彈波。",
       "cardCount": 9,
-      "example": "HTF 打到 POI 後出現 OLHC（先下後上）影線收回=假火向下獵殺後向上。等回踩再入。"
+      "example": "HTF 打到 POI 後出現 OLHC（先下後上）影線收回=假火向下獵殺後向上。等回踩再入。",
+      "quizItems": [
+        {
+          "id": "ch6_q01",
+          "type": "graph_label",
+          "difficulty": "hard",
+          "prompt": "圖中單根 K 先探低（L）再拉高收於高位（OLHC 型），在 HTF POI 區最可能代表？",
+          "choices": [
+            "A. 假火向下獵殺後向上（看多）",
+            "B. 假火向上後下跌（OHLC）",
+            "C. 無意義影線",
+            "D. 派發完結"
+          ],
+          "answer": "A. 假火向下獵殺後向上（看多）",
+          "explain": "OLHC：open-low-high-close，先下後上，假火打下方。",
+          "graph": {
+            "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 160'><rect width='320' height='160' fill='#0f1419'/><line x1='30' y1='120' x2='290' y2='120' stroke='#334'/><text x='140' y='145' fill='#8899aa' font-size='10'>HTF POI 區</text><line x1='140' y1='95' x2='140' y2='35' stroke='#4ade80' stroke-width='2.5'/><rect x='128' y='55' width='24' height='35' fill='#4ade80'/><circle cx='140' cy='35' r='4' fill='#fbbf24'/><text x='150' y='38' fill='#fbbf24' font-size='9'>H</text><circle cx='140' cy='95' r='4' fill='#f87171'/><text x='150' y='98' fill='#f87171' font-size='9'>L</text><line x1='128' y1='55' x2='152' y2='55' stroke='#fff' stroke-width='1.5'/><text x='108' y='58' fill='#fff' font-size='9'>O</text><line x1='128' y1='90' x2='152' y2='90' stroke='#fff' stroke-width='1.5'/><text x='108' y='93' fill='#fff' font-size='9'>C</text><text x='175' y='65' fill='#fff' font-size='11' font-weight='bold'>?</text></svg>",
+            "alt": "OLHC 蠟燭：先探低再收高，假火向下獵殺。"
+          }
+        },
+        {
+          "id": "ch6_q02",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "空間打火四步中，Step 2「確認動能」嘅關鍵係？",
+          "choices": [
+            "A. 立即追價",
+            "B. 價格重返前一根 bar 開盤價",
+            "C. 等 30 天",
+            "D. 只看費率"
+          ],
+          "answer": "B. 價格重返前一根 bar 開盤價",
+          "explain": "Step 2：確認動能需重返前一根開盤。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q03",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "空間打火四步正確次序？",
+          "choices": [
+            "A. 觀察 HTF 反轉→確認動能→回踩 POI→standard deviation TP",
+            "B. 追高→止損→離場",
+            "C. 只看 LTF→忽略 HTF",
+            "D. 先入場再搵 POI"
+          ],
+          "answer": "A. 觀察 HTF 反轉→確認動能→回踩 POI→standard deviation TP",
+          "explain": "四步：HTF→動能→POI→SD TP。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q04",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "假火（Judas swing）目的包括令交易者做錯邊、獵殺流動性，為真正趨勢減輕包袱。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "假火獵殺止損、洗盤後真趨勢更順。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q05",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "火狗彈彈波 Step 3：LTF 出現 CHoCH/BOS 後，你應等咩？",
+          "choices": [
+            "A. 立即市價追",
+            "B. 重返 FVG 做空/做多（跟 HTF bias）",
+            "C. 忽略 FVG",
+            "D. 只睇 OI"
+          ],
+          "answer": "B. 重返 FVG 做空/做多（跟 HTF bias）",
+          "explain": "火狗：CHoCH 後回踩 FVG 入場。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q06",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "點火三階段：引火（manipulation）可能係？",
+          "choices": [
+            "A. 只有真趨勢",
+            "B. 真假都有，係趨勢啟動階段",
+            "C. 只有假火",
+            "D. 派發"
+          ],
+          "answer": "B. 真假都有，係趨勢啟動階段",
+          "explain": "引火＝manipulation，真假皆可。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q07",
+          "type": "true_false",
+          "difficulty": "medium",
+          "prompt": "Step 3 入場應等回踩關鍵價，唔好馬上追高殺低。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "Step 3/4 強調等回踩，唔追價。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q08",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "火狗彈彈波完整流程？",
+          "choices": [
+            "A. HTF bias+POI→LTF CHoCH→回踩 FVG→protected low/high→跟大趨勢",
+            "B. 見陽線就買",
+            "C. 忽略 HTF",
+            "D. 只做空"
+          ],
+          "answer": "A. HTF bias+POI→LTF CHoCH→回踩 FVG→protected low/high→跟大趨勢",
+          "explain": "火狗六步流程。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q09",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "上升確認動能時，收盤應？",
+          "choices": [
+            "A. 低過前低",
+            "B. 過前高",
+            "C. 等於開盤",
+            "D. 無要求"
+          ],
+          "answer": "B. 過前高",
+          "explain": "上升動能：收盤過前高；下跌過前低。",
+          "graph": null
+        },
+        {
+          "id": "ch6_q10",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "OHLC 型假火（先上後下）喺看空 POI 通常暗示？",
+          "choices": [
+            "A. 假火打上後回落",
+            "B. 必須做多",
+            "C. 無影線",
+            "D. 等同 BOS"
+          ],
+          "answer": "A. 假火打上後回落",
+          "explain": "OHLC：open-high-low-close，假火打上方。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch7",
@@ -396,7 +1294,158 @@
       ],
       "intro": "時間打火：美東時段 BT／T1／T2／T3。所有鐘點標註夏令 EDT；標準時間 EST 各 +1 小時。PO3 喺呢度串起來。",
       "cardCount": 27,
-      "example": "美東 9:30 開市後標 T1 anchor（約 9:53 EDT）。先分 discount／premium，再喺 9:55–10:20 搵假火。"
+      "example": "美東 9:30 開市後標 T1 anchor（約 9:53 EDT）。先分 discount／premium，再喺 9:55–10:20 搵假火。",
+      "quizItems": [
+        {
+          "id": "ch7_q01",
+          "type": "graph_label",
+          "difficulty": "hard",
+          "prompt": "圖中 T1 時段標「?」嘅長下影線刺穿 15m 關鍵位後收回，最符合？",
+          "choices": [
+            "A. 假火（獵殺流動性）",
+            "B. 真趨勢啟動",
+            "C. 派發",
+            "D. 無關時間"
+          ],
+          "answer": "A. 假火（獵殺流動性）",
+          "explain": "T1 假火：刺穿關鍵位/流動性後影線收回。",
+          "graph": {
+            "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 160'><rect width='320' height='160' fill='#0f1419'/><text x='12' y='18' fill='#8899aa' font-size='9'>T1 9:55–10:20</text><line x1='40' y1='100' x2='280' y2='100' stroke='#fbbf24' stroke-dasharray='5 3'/><text x='42' y='94' fill='#fbbf24' font-size='8'>15m 關鍵位</text><line x1='80' y1='85' x2='80' y2='105' stroke='#94a3b8' stroke-width='2'/><rect x='74' y='92' width='12' height='10' fill='#94a3b8'/><line x1='130' y1='70' x2='130' y2='115' stroke='#f87171' stroke-width='2'/><rect x='124' y='95' width='12' height='15' fill='#f87171'/><line x1='180' y1='75' x2='180' y2='108' stroke='#f87171' stroke-width='2'/><rect x='174' y='98' width='12' height='10' fill='#f87171'/><line x1='230' y1='55' x2='230' y2='102' stroke='#4ade80' stroke-width='2.5'/><rect x='224' y='88' width='12' height='14' fill='#4ade80'/><circle cx='130' cy='115' r='5' fill='none' stroke='#fff' stroke-width='1.5'/><text x='138' y='118' fill='#fff' font-size='10'>?</text></svg>",
+            "alt": "T1 時段長下影線刺穿關鍵位後收回，屬假火。"
+          }
+        },
+        {
+          "id": "ch7_q02",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "T1 操作：9:53 anchor candle 用嚟做咩？",
+          "choices": [
+            "A. 立即入場",
+            "B. 區分 discount zone（偏多買）同 premium zone（偏空）",
+            "C. 止損位",
+            "D. 與時段無關"
+          ],
+          "answer": "B. 區分 discount zone（偏多買）同 premium zone（偏空）",
+          "explain": "T1 AC 用於分 premium/discount。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q03",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "T1 操作步驟正確次序？",
+          "choices": [
+            "A. 標 AC 分區→9:55–10:20 觀察假火→確認打流動性+到 15m PD array→關鍵時間等 BOS",
+            "B. 9:30 立即追",
+            "C. 忽略時間",
+            "D. 只睇費率"
+          ],
+          "answer": "A. 標 AC 分區→9:55–10:20 觀察假火→確認打流動性+到 15m PD array→關鍵時間等 BOS",
+          "explain": "T1 steps：time>action，等 BOS。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q04",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "確認真實 trend 需 double confirm：到 15m PD array + 1 分鐘 BOS。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "雙重確認係課程明確要求。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q05",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "PO3 三階段正確對應？",
+          "choices": [
+            "A. 吸籌→誘騙（假火）→分配（真火）",
+            "B. 派發→吸籌→上升",
+            "C. 只有假火",
+            "D. 忽略時間"
+          ],
+          "answer": "A. 吸籌→誘騙（假火）→分配（真火）",
+          "explain": "PO3＝accumulation, manipulation, distribution。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q06",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "T2 若 11:29 仍無明確行為，課程視為？",
+          "choices": [
+            "A. 繼續追",
+            "B. 橫盤，之後 T2/T3 可能失效",
+            "C. 必爆",
+            "D. 忽略"
+          ],
+          "answer": "B. 橫盤，之後 T2/T3 可能失效",
+          "explain": "T2 失效：11:29 無行為＝橫盤。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q07",
+          "type": "true_false",
+          "difficulty": "medium",
+          "prompt": "所有 BT/T1/T2/T3 鐘點以美東夏令 EDT 為準；標準 EST 各順延 +1 小時。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "時區規則係課程硬性要求。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q08",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "T2 同 T3 關係：邊項正確？",
+          "choices": [
+            "A. T2 盤整→T3 大機會；T2 大趨勢→T3 可能無用",
+            "B. 永遠同方向",
+            "C. T3 先於 T2",
+            "D. 互無關係"
+          ],
+          "answer": "A. T2 盤整→T3 大機會；T2 大趨勢→T3 可能無用",
+          "explain": "T2/T3 relationship 三條規則。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q09",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "T1 最常見真實趨勢啟動時間點約？",
+          "choices": [
+            "A. 9:30 開市瞬間",
+            "B. 10:02 附近",
+            "C. 16:00 收市",
+            "D. 無規律"
+          ],
+          "answer": "B. 10:02 附近",
+          "explain": "T1：10:02 最常見啟真實趨勢。",
+          "graph": null
+        },
+        {
+          "id": "ch7_q10",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "時間打火核心：機構喺關鍵時間做誘假火再反向，你應？",
+          "choices": [
+            "A. 預測方向立即入",
+            "B. 等假火完成再跟真正趨勢",
+            "C. 忽略時間",
+            "D. 只做震盪"
+          ],
+          "answer": "B. 等假火完成再跟真正趨勢",
+          "explain": "時間打火＝等假火，跟真趨勢。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch8",
@@ -435,7 +1484,155 @@
       ],
       "intro": "把形態同回調結構變成可執行進出場：城堡、頭肩、p1p2／b1b2、Russian 變體。",
       "cardCount": 15,
-      "example": "回調出現 p1 後再打更低 p2（止損獵殺）再向上，係常見多單結構；城堡要 HTF 方向+POI+三推。"
+      "example": "回調出現 p1 後再打更低 p2（止損獵殺）再向上，係常見多單結構；城堡要 HTF 方向+POI+三推。",
+      "quizItems": [
+        {
+          "id": "ch8_q01",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "SIR 城堡策略：「I」代表 institution，實戰指？",
+          "choices": [
+            "A. 任意支撐",
+            "B. 回到 POI 能量累積、至少三推",
+            "C. 只看 RSI",
+            "D. 開市價"
+          ],
+          "answer": "B. 回到 POI 能量累積、至少三推",
+          "explain": "城堡：HTF 方向+POI+三推。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q02",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "上升回調出現 p1 後再打更低 p2（止損獵殺），之後向上。呢個係？",
+          "choices": [
+            "A. 常見多單 p1p2 結構",
+            "B. 頭肩頂",
+            "C. 必跌",
+            "D. Sky trap"
+          ],
+          "answer": "A. 常見多單 p1p2 結構",
+          "explain": "p1p2：p2 更低打止損後上升。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q03",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "頭肩底右肩再跌但賣方無力，頸線係多空最後防線。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "頭肩底右肩縮量、頸線為關鍵。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q04",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "p1p2 入場確認次序？",
+          "choices": [
+            "A. 到 POI→等收針（動力）→過收針 open（動力確認）",
+            "B. 見 POI 立即追",
+            "C. 忽略收針",
+            "D. 只睇 OI"
+          ],
+          "answer": "A. 到 POI→等收針（動力）→過收針 open（動力確認）",
+          "explain": "p1p2 entry：收針+過 open。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q05",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "「大力狗狗」形態特徵？",
+          "choices": [
+            "A. 同一阻力越彈越小，放量突破",
+            "B. 同一支撐越彈越小，放量下跌",
+            "C. 無量突破",
+            "D. 頭肩頂"
+          ],
+          "answer": "A. 同一阻力越彈越小，放量突破",
+          "explain": "SOS 大力狗狗＝阻力多次測試後放量破。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q06",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "「彈簧床」形態暗示？",
+          "choices": [
+            "A. 看漲",
+            "B. 同一支撐越彈越小，放量下跌",
+            "C. 橫盤",
+            "D. 無量"
+          ],
+          "answer": "B. 同一支撐越彈越小，放量下跌",
+          "explain": "SOW 彈簧床＝支撐失守。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q07",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "p2 可能形態包括 lower low、double bottom、higher low；p2 失敗可能出 p3 陷阱。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "p2 三種形態+p3 trap 係課程內容。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q08",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "SIR 城堡進行次序？",
+          "choices": [
+            "A. 睇清 HTF 大方向→回 POI 等壓縮三推→評估 RR 入場",
+            "B. 無 HTF 直接做",
+            "C. 一次推就入",
+            "D. 忽略 POI"
+          ],
+          "answer": "A. 睇清 HTF 大方向→回 POI 等壓縮三推→評估 RR 入場",
+          "explain": "城堡三步。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q09",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "Russian 方法：明顯大趨勢時「9 buy」係？",
+          "choices": [
+            "A. 開盤買",
+            "B. 收盤價買入，止損放低、倉位細",
+            "C. 無止損",
+            "D. 只做空"
+          ],
+          "answer": "B. 收盤價買入，止損放低、倉位細",
+          "explain": "Russian 9 buy：close 買、細倉博。",
+          "graph": null
+        },
+        {
+          "id": "ch8_q10",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "趨勢轉弱信號包括？",
+          "choices": [
+            "A. 長影線、K 棒變細、重疊增多",
+            "B. 只有放量",
+            "C. 無影線",
+            "D. 必須頭肩"
+          ],
+          "answer": "A. 長影線、K 棒變細、重疊增多",
+          "explain": "Russian：long wick, small candle, overlapping。",
+          "graph": null
+        }
+      ]
     },
     {
       "id": "ch9",
@@ -466,7 +1663,155 @@
       ],
       "intro": "山寨專題：貨源歸邊、人造盤面指標同陷阱。需要 Ch4 量能感覺同 Ch8 進出場紀律。",
       "cardCount": 13,
-      "example": "山寨先睇燃料（CV 真空+共識），再睇係低位吸籌定主升浪中段；sky trap=拉高後一嘢派發。"
+      "example": "山寨先睇燃料（CV 真空+共識），再睇係低位吸籌定主升浪中段；sky trap=拉高後一嘢派發。",
+      "quizItems": [
+        {
+          "id": "ch9_q01",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "搵爆升山寨：課程強調「夠乾夠悶」係因為？",
+          "choices": [
+            "A. 人多好拉",
+            "B. lift 輕、貨源歸邊先升得快",
+            "C. 成交量越大越好",
+            "D. 忽略籌碼"
+          ],
+          "answer": "B. lift 輕、貨源歸邊先升得快",
+          "explain": "貨 lift 理論：少人、乾、貨源歸邊。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q02",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "CV（籌碼真空）主要指？",
+          "choices": [
+            "A. 買盤多",
+            "B. 浮籌枯竭、orderbook 抽乾，貨源歸邊",
+            "C. 費率高",
+            "D. 成交量最大"
+          ],
+          "answer": "B. 浮籌枯竭、orderbook 抽乾，貨源歸邊",
+          "explain": "CV＝籌碼真空，貨少價由莊話事。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q03",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "Sky trap＝拉到最高一野落去，係典型派發陷阱。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "sky trap 定義正確。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q04",
+          "type": "sequence_order",
+          "difficulty": "medium",
+          "prompt": "山寨選幣四核心指標？",
+          "choices": [
+            "A. 核心共識、AP、CV、VI",
+            "B. 只睇 BTC",
+            "C. MACD、RSI、KDJ、BOLL",
+            "D. 只看漲幅榜"
+          ],
+          "answer": "A. 核心共識、AP、CV、VI",
+          "explain": "四指標：共識、AP、CV、VI。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q05",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "AP 指標用途？",
+          "choices": [
+            "A. 測試人造盤面頻率，判斷是否快起飛",
+            "B. 計算 POC",
+            "C. 資金費率",
+            "D. 等同 CVD"
+          ],
+          "answer": "A. 測試人造盤面頻率，判斷是否快起飛",
+          "explain": "AP＝高頻 AI 測試人造頻率。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q06",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "兩種入場方式：低位吸籌 vs？",
+          "choices": [
+            "A. 主升浪中段等平台再入",
+            "B. overextended 追",
+            "C. 只做空",
+            "D. 忽略 VI"
+          ],
+          "answer": "A. 主升浪中段等平台再入",
+          "explain": "低位買 vs 主波中段平台入。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q07",
+          "type": "true_false",
+          "difficulty": "hard",
+          "prompt": "散戶多空比（如 CoinGlass）常要調轉理解：散戶多可能暗示反向機會。",
+          "choices": [
+            "正確",
+            "錯誤"
+          ],
+          "answer": "正確",
+          "explain": "散戶多空調轉做係課程提示。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q08",
+          "type": "sequence_order",
+          "difficulty": "hard",
+          "prompt": "評估燃料是否足夠嘅次序？",
+          "choices": [
+            "A. CV 真空+核心共識→AP/VI 確認→再諗入場位",
+            "B. 見漲幅榜就追",
+            "C. 忽略共識",
+            "D. 只做 BTC"
+          ],
+          "answer": "A. CV 真空+核心共識→AP/VI 確認→再諗入場位",
+          "explain": "LV+CC 決定燃料夠唔夠。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q09",
+          "type": "definition_mcq",
+          "difficulty": "medium",
+          "prompt": "VI（視覺點火）策略心態？",
+          "choices": [
+            "A. 騙散戶接貨時跟莊順風車",
+            "B. 同散戶一齊接",
+            "C. 忽略大時框",
+            "D. 必做空"
+          ],
+          "answer": "A. 騙散戶接貨時跟莊順風車",
+          "explain": "VI：跟莊家，唔同散戶接貨。",
+          "graph": null
+        },
+        {
+          "id": "ch9_q10",
+          "type": "definition_mcq",
+          "difficulty": "hard",
+          "prompt": "點解要同時睇升幅榜同跌幅榜？",
+          "choices": [
+            "A. 資金流向強者恆強、弱者恆弱",
+            "B. 只看一邊",
+            "C. 無關",
+            "D. 只做跌幅"
+          ],
+          "answer": "A. 資金流向強者恆強、弱者恆弱",
+          "explain": "資金喺強勢板塊集中。",
+          "graph": null
+        }
+      ]
     }
   ],
   "cards": [
@@ -475,1180 +1820,1539 @@
       "chapter": "ch7",
       "lesson": "intro",
       "front": "甚麼是時間打火？",
-      "back": "在關鍵時間\n機構做出誘假火 再反向獵殺\n你要做的是等待假火 跟上真正趨勢",
+      "back": "時間打火是指在關鍵時間點，機構先製造假突破（假火），再反向獵殺流動性。你的做法是等待假火出現，確認後跟上真正的趨勢方向。",
+      "originalFront": "甚麼是時間打火？",
+      "originalBack": "在關鍵時間\n機構做出誘假火 再反向獵殺\n你要做的是等待假火 跟上真正趨勢",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開口語為完整句"
     },
     {
       "id": "1770198911488",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "咁點樣為之假火？",
-      "back": "假火是為獵殺大量流動性 \n誘導做一個假突破\n加上打高低點止損單\n但不是所有高低點都有 看似強支撐or 阻力先有",
+      "front": "點樣先算係假火？",
+      "back": "假火目的是獵殺大量流動性：誘導交易者做假突破，並掃掉高低點的止損單。並非每個高低點都會出現假火，通常要先有看似強勁的支撐或阻力。",
+      "originalFront": "咁點樣為之假火？",
+      "originalBack": "假火是為獵殺大量流動性 \n誘導做一個假突破\n加上打高低點止損單\n但不是所有高低點都有 看似強支撐or 阻力先有",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留口語「點樣」"
     },
     {
       "id": "1770199054023",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "底部轉勢成交量行為",
-      "back": "主要下跌先放量\n再次下跌但成交量縮少\n轉勢成交量放大",
+      "front": "底部轉勢時成交量有甚麼典型行為？",
+      "back": "主要下跌階段通常先放量。再次下跌時成交量往往縮少。真正轉勢時成交量會再次放大。",
+      "originalFront": "底部轉勢成交量行為",
+      "originalBack": "主要下跌先放量\n再次下跌但成交量縮少\n轉勢成交量放大",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "改為問句並列三步"
     },
     {
       "id": "1770199184001",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "甚麼是彈彈波",
-      "back": "順應一個trend不同做出bos 你係bos 入單",
+      "front": "甚麼是彈彈波？",
+      "back": "彈彈波是順應同一個 trend，在不同位置反覆出現 BOS 的走勢。你可以在 BOS 確認後入單。",
+      "originalFront": "甚麼是彈彈波",
+      "originalBack": "順應一個trend不同做出bos 你係bos 入單",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 BOS 術語"
     },
     {
       "id": "1770199323435",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "甚麼是逆轉模式",
-      "back": "打左啲關鍵位置 如liquidity ob ,有明顯有力反彈再觀察fvg ,ob有冇reject",
+      "front": "甚麼是逆轉模式？",
+      "back": "價格先掃過關鍵位置（如 liquidity、OB），出現明顯有力反彈後，再觀察 FVG 或 OB 有冇 reject。",
+      "originalFront": "甚麼是逆轉模式",
+      "originalBack": "打左啲關鍵位置 如liquidity ob ,有明顯有力反彈再觀察fvg ,ob有冇reject",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留原步驟順序"
     },
     {
       "id": "1770199729668",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "anchor candle 是？",
-      "back": "打完動動性穿過之前橫盤的candle",
+      "front": "anchor candle 是甚麼？",
+      "back": "anchor candle 是打完流動性後、穿過之前橫盤區間的那根 K 棒。",
+      "originalFront": "anchor candle 是？",
+      "originalBack": "打完動動性穿過之前橫盤的candle",
       "sourceDeck": "03_Trading/時間打火",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "修正「動動性」為流動性"
     },
     {
       "id": "1770199889296",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "列出所有tt,bt,t1,t2,t3 時間 夏令",
-      "back": "bt 消息時間：8：30\nbt 開市時間：9：30\nt1 anchor candle:9:53\nt2 anchor candle:10:34\nt3 anchor candle:11:10\n\n【時區】以上為美國東部夏令時間 EDT（UTC−4）。標準時間 EST（UTC−5）各點順延 +1 小時。請以 America/New_York 為準。",
+      "front": "請列出 TT、BT、T1、T2、T3 的夏令時間。",
+      "back": "BT 消息時間：8:30\nBT 開市時間：9:30\nT1 anchor candle：9:53\nT2 anchor candle：10:34\nT3 anchor candle：11:10\n\n【時區】以上為美國東部夏令時間 EDT（UTC−4）。標準時間 EST（UTC−5）各點順延 +1 小時。請以 America/New_York 為準。",
+      "originalFront": "列出所有tt,bt,t1,t2,t3 時間 夏令",
+      "originalBack": "bt 消息時間：8：30\nbt 開市時間：9：30\nt1 anchor candle:9:53\nt2 anchor candle:10:34\nt3 anchor candle:11:10\n\n【時區】以上為美國東部夏令時間 EDT（UTC−4）。標準時間 EST（UTC−5）各點順延 +1 小時。請以 America/New_York 為準。",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留時間表與 EST 註記"
     },
     {
       "id": "1770200001220",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "打火最好搵咩位入",
-      "back": "htf 既 poi\n同 逆轉要佢踩實 fvg呢d位",
+      "front": "時間打火最好喺咩位入場？",
+      "back": "最好喺 HTF POI 入場。逆轉 setup 則要等價格踩實 FVG 等關鍵位。",
+      "originalFront": "打火最好搵咩位入",
+      "originalBack": "htf 既 poi\n同 逆轉要佢踩實 fvg呢d位",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留口語「搵咩位」"
     },
     {
       "id": "1770200311393",
       "chapter": "ch7",
       "lesson": "t1",
-      "front": "列出t1時間軸",
-      "back": "9：30開市\n9：53\n t1 anchor candle 呢支用來in which zone\n區分discount zone(better for buy)同premium zone (better for short)\n9:55 t1 start通常開始假火\n10：02 最常見啟真實趨勢動點\n10:20 t1 end",
+      "front": "T1 的時間軸是怎樣的？",
+      "back": "9:30 開市\n9:53 T1 anchor candle：用來判斷所在 zone（discount zone 較適合買入，premium zone 較適合做空）\n9:55 T1 start，通常開始假火\n10:02 最常見的真實趨勢啟動點\n10:20 T1 end",
+      "originalFront": "列出t1時間軸",
+      "originalBack": "9：30開市\n9：53\n t1 anchor candle 呢支用來in which zone\n區分discount zone(better for buy)同premium zone (better for short)\n9:55 t1 start通常開始假火\n10：02 最常見啟真實趨勢動點\n10:20 t1 end",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留 premium/discount 與時間點"
     },
     {
       "id": "1770200781236",
       "chapter": "ch7",
       "lesson": "t1",
-      "front": "如何確認t1假火",
-      "back": "通常在9：55/10：02\n觸及15分鐘關鍵位pd array(ob/fvg)\n通常沖向低阻力及流動性位置\n假火為交易者做錯邊 止損 打流動性",
+      "front": "如何確認 T1 假火？",
+      "back": "通常在 9:55 或 10:02 出現。價格會觸及 15 分鐘關鍵 PD array（OB/FVG），並衝向低阻力及流動性位置。假火令交易者做錯邊、觸發止損，從而掃走流動性。",
+      "originalFront": "如何確認t1假火",
+      "originalBack": "通常在9：55/10：02\n觸及15分鐘關鍵位pd array(ob/fvg)\n通常沖向低阻力及流動性位置\n假火為交易者做錯邊 止損 打流動性",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開確認條件"
     },
     {
       "id": "1770200935413",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "如何確認真實trend",
-      "back": "double confirm:\n1.到左15分pd array\n2.1 分鐘有bos\n\n特徵：\n成交量大\n速度快\n波動大\n回調小",
+      "front": "如何確認真實 trend？",
+      "back": "雙重確認：1. 價格到達 15 分 PD array；2. 1 分鐘圖出現 BOS。特徵包括成交量大、速度快、波動大、回調小。",
+      "originalFront": "如何確認真實trend",
+      "originalBack": "double confirm:\n1.到左15分pd array\n2.1 分鐘有bos\n\n特徵：\n成交量大\n速度快\n波動大\n回調小",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化 double confirm"
     },
     {
       "id": "1770201041721",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "真實trend可能持續到咩時間",
-      "back": "1.10:20 假火區間結束\n2.10:44 enter t2 zone\n3:10:55 t2 confirmation\nbest case : 12:35",
+      "front": "真實 trend 可能持續到甚麼時間？",
+      "back": "1. 10:20 假火區間結束\n2. 10:44 進入 T2 zone\n3. 10:55 T2 confirmation\n最佳情況可持續到 12:35",
+      "originalFront": "真實trend可能持續到咩時間",
+      "originalBack": "1.10:20 假火區間結束\n2.10:44 enter t2 zone\n3:10:55 t2 confirmation\nbest case : 12:35",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留原時間節點"
     },
     {
       "id": "1770201314487",
       "chapter": "ch7",
       "lesson": "t1",
-      "front": "操作t1 steps",
-      "back": "1.標ac 分 discount/premium\n2.wait and observe 9:55-10:20 price action 找出假火\n3.confirm打左流動性同arrive 15pd array\n4.在關鍵時間如10：02/10：07/10：12 做單\n\ntime>action,wait for bos but not prediction,patience>action",
+      "front": "操作 T1 的步驟是甚麼？",
+      "back": "1. 標記 anchor candle，區分 discount/premium\n2. 9:55–10:20 觀察價格行為，找出假火\n3. 確認已掃流動性並到達 15 分 PD array\n4. 在 10:02、10:07、10:12 等關鍵時間做單\n\n原則：time > action；等 BOS 而非預測；耐心 > 行動。",
+      "originalFront": "操作t1 steps",
+      "originalBack": "1.標ac 分 discount/premium\n2.wait and observe 9:55-10:20 price action 找出假火\n3.confirm打左流動性同arrive 15pd array\n4.在關鍵時間如10：02/10：07/10：12 做單\n\ntime>action,wait for bos but not prediction,patience>action",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留步驟與原則"
     },
     {
       "id": "1770201380982",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2 時間區",
-      "back": "10：20-11：10",
+      "front": "T2 的時間區間是幾時？",
+      "back": "T2 時間區間為 10:20 至 11:10。",
+      "originalFront": "t2 時間區",
+      "originalBack": "10：20-11：10",
       "sourceDeck": "03_Trading/時間打火",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770201423972",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2 anchor candle",
-      "back": "10:34 \nif the price is above 10:34 short will be better\nif the price is lower than 10:34 buy will be better",
+      "front": "T2 anchor candle 點樣用？",
+      "back": "T2 anchor candle 在 10:34。若價格高於 10:34 那根 K 棒，做空較佳；若低於 10:34，買入較佳。",
+      "originalFront": "t2 anchor candle",
+      "originalBack": "10:34 \nif the price is above 10:34 short will be better\nif the price is lower than 10:34 buy will be better",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "中文化方向判斷"
     },
     {
       "id": "1770201453574",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2 關鍵時間",
-      "back": "10：34，10：44，10：55",
+      "front": "T2 有哪些關鍵時間？",
+      "back": "T2 關鍵時間為 10:34、10:44、10:55。",
+      "originalFront": "t2 關鍵時間",
+      "originalBack": "10：34，10：44，10：55",
       "sourceDeck": "03_Trading/時間打火",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770201531760",
       "chapter": "ch7",
       "lesson": "t3",
-      "front": "t2,t3假火三步",
-      "back": "po3\naccumlation,manipulation,distribution",
+      "front": "T2、T3 假火的三步是甚麼？",
+      "back": "對應 PO3 三階段：accumulation（吸籌）、manipulation（操控/假火）、distribution（分配/真趨勢）。",
+      "originalFront": "t2,t3假火三步",
+      "originalBack": "po3\naccumlation,manipulation,distribution",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 PO3 英文"
     },
     {
       "id": "1770201667470",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2 真 trend開始時間",
-      "back": "10:34,10:44\nlatest 11:10",
+      "front": "T2 真 trend 通常幾時開始？",
+      "back": "常見啟動時間為 10:34 或 10:44，最遲約 11:10。",
+      "originalFront": "t2 真 trend開始時間",
+      "originalBack": "10:34,10:44\nlatest 11:10",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留時間範圍"
     },
     {
       "id": "1770201765233",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2失效",
-      "back": "if 11:29 都未有行為 count as橫盤\n11：49都未有 =市場冇方向\nafter that t2/t3 cant use",
+      "front": "T2 甚麼情況下算失效？",
+      "back": "若 11:29 仍無明顯行為，視為橫盤。11:49 仍無方向，代表市場冇方向。之後 T2/T3 不宜再用。",
+      "originalFront": "t2失效",
+      "originalBack": "if 11:29 都未有行為 count as橫盤\n11：49都未有 =市場冇方向\nafter that t2/t3 cant use",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留失效判斷時間"
     },
     {
       "id": "1770202105809",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2 最佳setup",
-      "back": "t1 波動大\n10：20-10：55 建立左低阻力 or 流動性",
+      "front": "T2 最佳 setup 是甚麼？",
+      "back": "T1 波動大。10:20–10:55 期間已建立低阻力區或流動性位置。",
+      "originalFront": "t2 最佳setup",
+      "originalBack": "t1 波動大\n10：20-10：55 建立左低阻力 or 流動性",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開兩項條件"
     },
     {
       "id": "1770202237853",
       "chapter": "ch7",
       "lesson": "t2",
-      "front": "t2 manipulatio假火",
-      "back": "10：30-10：45\n10：45-11：10\n找出影線\n找出假跌破/or test 關鍵位\n實體線收回關鍵位內",
+      "front": "T2 manipulation 假火點樣睇？",
+      "back": "觀察 10:30–10:45 及 10:45–11:10。找出影線、假跌破或測試關鍵位，並確認實體收回到關鍵位之內。",
+      "originalFront": "t2 manipulatio假火",
+      "originalBack": "10：30-10：45\n10：45-11：10\n找出影線\n找出假跌破/or test 關鍵位\n實體線收回關鍵位內",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留兩段時間窗"
     },
     {
       "id": "1770202365739",
       "chapter": "ch7",
       "lesson": "t3",
-      "front": "t3 time",
-      "back": "11:10-11:49\nanchor canlde 11:10,second anchor candle maybe 11:21,\n11:20can be observe,11:37 key position",
+      "front": "T3 的時間安排是怎樣？",
+      "back": "T3 區間：11:10–11:49。anchor candle 在 11:10；第二根 anchor candle 可能在 11:21。11:20 可觀察；11:37 為關鍵位置。",
+      "originalFront": "t3 time",
+      "originalBack": "11:10-11:49\nanchor canlde 11:10,second anchor candle maybe 11:21,\n11:20can be observe,11:37 key position",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留全部時間點"
     },
     {
       "id": "1770202461935",
       "chapter": "ch7",
       "lesson": "t3",
-      "front": "t3 mainpulation",
-      "back": "15m candle\n11:15-11:30\n11:30-11:45\n找出有冇假火收影線\n插針收回",
+      "front": "T3 manipulation 點樣確認？",
+      "back": "看 15 分鐘 K 棒，重點時段為 11:15–11:30 及 11:30–11:45。留意有冇假火、收長影線或插針後收回。",
+      "originalFront": "t3 mainpulation",
+      "originalBack": "15m candle\n11:15-11:30\n11:30-11:45\n找出有冇假火收影線\n插針收回",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 15m 與時段"
     },
     {
       "id": "1770202577356",
       "chapter": "ch7",
       "lesson": "t3",
-      "front": "t3 real trend",
-      "back": "打完流動性後 or htf /pdarray\n時間點位：11：21,11:29,11:37\n到左12：02未動 可能橫盤\n如果價格被anchor candle下拒絕 buy\n如果價格被anchor candle上拒絕 short",
+      "front": "T3 真實 trend 點樣確認？",
+      "back": "打完流動性後，或到達 HTF PD array。關鍵時間：11:21、11:29、11:37。若到 12:02 仍無動靜，可能橫盤。價格被 anchor candle 下方拒絕 → 做多；被上方拒絕 → 做空。",
+      "originalFront": "t3 real trend",
+      "originalBack": "打完流動性後 or htf /pdarray\n時間點位：11：21,11:29,11:37\n到左12：02未動 可能橫盤\n如果價格被anchor candle下拒絕 buy\n如果價格被anchor candle上拒絕 short",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留方向判斷"
     },
     {
       "id": "1770202675030",
       "chapter": "ch7",
       "lesson": "t3",
-      "front": "t2and t3 relationship",
-      "back": "1.t2盤整 t3 大機會\n2. t2 big trend t3 may no use\n3.如果t2,t3相反 之後大機會盤整",
+      "front": "T2 同 T3 有咩關係？",
+      "back": "1. T2 盤整，T3 大機會出行情\n2. T2 已有大 trend，T3 可能用唔到\n3. 若 T2、T3 方向相反，之後大機會盤整",
+      "originalFront": "t2and t3 relationship",
+      "originalBack": "1.t2盤整 t3 大機會\n2. t2 big trend t3 may no use\n3.如果t2,t3相反 之後大機會盤整",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留三條關係"
     },
     {
       "id": "1770202736682",
       "chapter": "ch7",
       "lesson": "t3",
-      "front": "t3 steps",
-      "back": "1.time 11:10-11:49\n2.anchor candle 11:10,11:21\n3.manipulation 11:15-11:45\n4.entry",
+      "front": "操作 T3 的步驟是甚麼？",
+      "back": "1. 時間 11:10–11:49\n2. anchor candle：11:10、11:21\n3. manipulation：11:15–11:45\n4. 入場",
+      "originalFront": "t3 steps",
+      "originalBack": "1.time 11:10-11:49\n2.anchor candle 11:10,11:21\n3.manipulation 11:15-11:45\n4.entry",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留四步流程"
     },
     {
       "id": "1770605049219",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "如何市場點火",
-      "back": "點火 即accumlation 價格盤整 積蓄能量\n引火 即manipulation 趨勢開始啟動 真假都有\n火災 即distribution 真trend",
+      "front": "市場「點火」係咩意思？",
+      "back": "點火即 accumulation：價格盤整、積蓄能量。引火即 manipulation：趨勢啟動，真假皆有。火災即 distribution：真 trend。",
+      "originalFront": "如何市場點火",
+      "originalBack": "點火 即accumlation 價格盤整 積蓄能量\n引火 即manipulation 趨勢開始啟動 真假都有\n火災 即distribution 真trend",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留三階比喻"
     },
     {
       "id": "1770605176159",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "真正趨勢發生前會有？",
-      "back": "假火 即judas swing",
+      "front": "真正趨勢發生前通常會有甚麼？",
+      "back": "通常會先出現假火，即 Judas swing。",
+      "originalFront": "真正趨勢發生前會有？",
+      "originalBack": "假火 即judas swing",
       "sourceDeck": "03_Trading/空間打火",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770605243114",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "假火目的",
-      "back": "市場上升前最後洗盤 令架lift更輕 升得更快更順\n令交易者做錯邊",
+      "front": "假火有咩目的？",
+      "back": "市場上升前最後洗盤，令「貨 lift」更輕，升得更快更順。同時令交易者做錯邊。",
+      "originalFront": "假火目的",
+      "originalBack": "市場上升前最後洗盤 令架lift更輕 升得更快更順\n令交易者做錯邊",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 lift 比喻"
     },
     {
       "id": "1770605680875",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "what is olhc ohlc",
-      "back": "一支k棒 會先假火\nOHLC:open high low close \n假火打上面 先上再下 冇力下跌\nOLHC:open low high close\n假火打上面 再先下再上 強力上漲",
+      "front": "OHLC 同 OLHC 分別代表咩假火行為？",
+      "back": "一支 K 棒常常會先出現假火，再用收盤方向確認。\nOHLC（open → high → low → close）：先向上掃流動性（打高），再向下走，常見於偏空嘅假火。\nOLHC（open → low → high → close）：先向下掃流動性（打低），再向上走，常見於偏多嘅假火。\n重點係睇「先掃邊邊」，唔好只睇最終顏色。",
+      "originalFront": "what is olhc ohlc",
+      "originalBack": "一支k棒 會先假火\nOHLC:open high low close \n假火打上面 先上再下 冇力下跌\nOLHC:open low high close\n假火打上面 再先下再上 強力上漲",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "澄清 OHLC=先高後低；OLHC=先低後高（修正潤色時兩邊都寫打上面嘅錯誤）"
     },
     {
       "id": "1770605948586",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "打火4步",
-      "back": "1.觀察htf k棒反轉 or breakout\n2.確認動能 價格重返前一根開盤\n3.價格回踩至關鍵價 find poi\n4.standard deviation tp",
+      "front": "空間打火有四個步驟，分別係咩？",
+      "back": "1. 觀察 HTF K 棒反轉或 breakout\n2. 確認動能：價格重返前一根開盤價\n3. 回踩至關鍵價，找 POI\n4. 以 standard deviation 設 TP",
+      "originalFront": "打火4步",
+      "originalBack": "1.觀察htf k棒反轉 or breakout\n2.確認動能 價格重返前一根開盤\n3.價格回踩至關鍵價 find poi\n4.standard deviation tp",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留四步"
     },
     {
       "id": "1770606529099",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "step 1＆2觀察 要點",
-      "back": "htf觀察\n1.find the high time frame是否轉勢or 突破\n觀察是否打左前一根影線 做了假火or 打左關鍵流動性\n2.確認動能 重返前一根bar open",
+      "front": "空間打火第 1、2 步要觀察甚麼？",
+      "back": "HTF 觀察：1. 高時間框架是否轉勢或突破；是否掃過前一根影線、做假火或掃關鍵流動性。2. 確認動能：價格重返前一根 bar 的 open。",
+      "originalFront": "step 1＆2觀察 要點",
+      "originalBack": "htf觀察\n1.find the high time frame是否轉勢or 突破\n觀察是否打左前一根影線 做了假火or 打左關鍵流動性\n2.確認動能 重返前一根bar open",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化兩步要點"
     },
     {
       "id": "1770606743679",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "step 3 and 4 入場與tp",
-      "back": "1.不要馬上追高殺低\n2.等待回踩 到關鍵價位 關察是否成為有效阻力\n3.tp with standard deviation 2-2.5",
+      "front": "空間打火第 3、4 步入場同 TP 點做？",
+      "back": "1. 不要馬上追高殺低\n2. 等待回踩到關鍵價位，觀察是否成為有效阻力\n3. TP 用 standard deviation，常見 2–2.5",
+      "originalFront": "step 3 and 4 入場與tp",
+      "originalBack": "1.不要馬上追高殺低\n2.等待回踩 到關鍵價位 關察是否成為有效阻力\n3.tp with standard deviation 2-2.5",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 SD 倍數"
     },
     {
       "id": "1770606842510",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "如何確認動能",
-      "back": "上升收盤要過前高\n下跌要過前低",
+      "front": "點樣確認動能？",
+      "back": "上升時收盤要過前高；下跌時收盤要過前低。",
+      "originalFront": "如何確認動能",
+      "originalBack": "上升收盤要過前高\n下跌要過前低",
       "sourceDeck": "03_Trading/空間打火",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全對稱句"
     },
     {
       "id": "1770607790498",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "what is sos大力狗狗 and sow 彈簧床",
-      "back": "價格通過多次測試同一個水平 點位\n當力量即成交量 夠大就會突破\n\n大力狗狗即在同一個阻力 通常越彈越小 然後放量突破\n彈簧床即在同一個支撐 越彈越小 放量下跌",
+      "front": "SOS（大力狗狗）同 SOW（彈簧床）係咩？",
+      "back": "價格多次測試同一水平；當力量（成交量）夠大就會突破。\n大力狗狗（SOS）：同一阻力反覆測試，通常越彈越小，然後放量突破。\n彈簧床（SOW）：同一支撐反覆測試，越彈越小，然後放量下跌。",
+      "originalFront": "what is sos大力狗狗 and sow 彈簧床",
+      "originalBack": "價格通過多次測試同一個水平 點位\n當力量即成交量 夠大就會突破\n\n大力狗狗即在同一個阻力 通常越彈越小 然後放量突破\n彈簧床即在同一個支撐 越彈越小 放量下跌",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 SOS/SOW 別名"
     },
     {
       "id": "1770608271340",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "SIR trading 城堡策略 what is sir",
-      "back": "strucuture institution riskAndReward",
+      "front": "SIR 交易「城堡策略」中 SIR 代表咩？",
+      "back": "SIR 代表 Structure、Institution、Risk and Reward。",
+      "originalFront": "SIR trading 城堡策略 what is sir",
+      "originalBack": "strucuture institution riskAndReward",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開縮寫"
     },
     {
       "id": "1770609309999",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "所以城堡是怎樣進行的",
-      "back": "1.睇清大方向即htf\n2.回到poi 能量累積 壓縮 如沒有不要亂沖\n3.力量要推好 至少撞三次先好即三推",
+      "front": "城堡策略點樣進行？",
+      "back": "1. 睇清大方向（HTF）\n2. 回到 POI，等能量累積、壓縮；若未壓縮好不要亂衝\n3. 力量要推夠，至少撞三次（三推）先好入",
+      "originalFront": "所以城堡是怎樣進行的",
+      "originalBack": "1.睇清大方向即htf\n2.回到poi 能量累積 壓縮 如沒有不要亂沖\n3.力量要推好 至少撞三次先好即三推",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留三推概念"
     },
     {
       "id": "1770705627617",
       "chapter": "ch1",
       "lesson": "dow",
-      "front": "what is the three primary trend of 道氏理論",
-      "back": "1.primary trend\n2.second trend\n3.超短期波\n即htf ltf",
+      "front": "道氏理論的三種主要 trend 係咩？",
+      "back": "1. primary trend（主趨勢）\n2. secondary trend（次趨勢）\n3. 超短期波動（minor movement）\n對應 HTF 與 LTF。",
+      "originalFront": "what is the three primary trend of 道氏理論",
+      "originalBack": "1.primary trend\n2.second trend\n3.超短期波\n即htf ltf",
       "sourceDeck": "03_Trading/道氏理論",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全層級說明"
     },
     {
       "id": "1770705715859",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is bos",
-      "back": "在上升超過weak high 同時出現strong low\n在下跌超過weak low 同時出現strong high",
+      "front": "甚麼是 BOS？",
+      "back": "上升時：突破 weak high 並同時出現 strong low。下跌時：跌破 weak low 並同時出現 strong high。",
+      "originalFront": "what is bos",
+      "originalBack": "在上升超過weak high 同時出現strong low\n在下跌超過weak low 同時出現strong high",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 BOS 定義"
     },
     {
       "id": "1770705754157",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is choch",
-      "back": "轉勢 打破strong high or low",
+      "front": "甚麼是 CHoCH？",
+      "back": "CHoCH 是轉勢信號，代表打破 strong high 或 strong low。",
+      "originalFront": "what is choch",
+      "originalBack": "轉勢 打破strong high or low",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770705844039",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "what is fvg",
-      "back": "3 continue bar the space that middle bar 's space do not affect by the wig",
+      "front": "甚麼是 FVG？",
+      "back": "三根連續 K 棒中，中間那根與前後棒之間、未被影線填滿的價格空隙，即為 FVG。",
+      "originalFront": "what is fvg",
+      "originalBack": "3 continue bar the space that middle bar 's space do not affect by the wig",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "中文化定義"
     },
     {
       "id": "1770705893429",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "why fvg",
-      "back": "莊掃貨 清唔哂 回來清貨 \n代表好大既power",
+      "front": "點解要留意 FVG？",
+      "back": "莊家掃貨後清唔哂，價格會回來清貨，代表背後有很大 power。",
+      "originalFront": "why fvg",
+      "originalBack": "莊掃貨 清唔哂 回來清貨 \n代表好大既power",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留口語"
     },
     {
       "id": "1770705917672",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "what is htf poi",
-      "back": "high time frame point of interest",
+      "front": "甚麼是 HTF POI？",
+      "back": "HTF POI 即 high time frame point of interest（高時間框架關鍵價位）。",
+      "originalFront": "what is htf poi",
+      "originalBack": "high time frame point of interest",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全中英文"
     },
     {
       "id": "1770706031618",
       "chapter": "ch6",
       "lesson": "firedog",
-      "front": "what is fire dog bounce step",
-      "back": "1.htf 有bias poi,搵潛在end point\n2.ltf choch trend appea\n3.choch/bos 重返fvg 做空\n4.找protected low /high\n5.fvg,liquidity grab 入單\n6.follow the big trend",
+      "front": "火狗彈彈波（fire dog bounce）的步驟係咩？",
+      "back": "1. HTF 有 bias POI，搵潛在 end point\n2. LTF 出現 CHoCH，trend 出現\n3. CHoCH/BOS 後重返 FVG 做空\n4. 找 protected low/high\n5. FVG、liquidity grab 入單\n6. follow the big trend",
+      "originalFront": "what is fire dog bounce step",
+      "originalBack": "1.htf 有bias poi,搵潛在end point\n2.ltf choch trend appea\n3.choch/bos 重返fvg 做空\n4.找protected low /high\n5.fvg,liquidity grab 入單\n6.follow the big trend",
       "sourceDeck": "03_Trading/火狗彈彈波",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留六步流程"
     },
     {
       "id": "1770706083313",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "點樣定義最有價值既fvg",
-      "back": "有liquidity grab",
+      "front": "點樣定義最有價值嘅 FVG？",
+      "back": "最有價值的 FVG 通常伴隨 liquidity grab。",
+      "originalFront": "點樣定義最有價值既fvg",
+      "originalBack": "有liquidity grab",
       "sourceDeck": "03_Trading/basic",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770706348698",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "what is ifvg",
-      "back": "two different fvg overlap place\nbetter than 1 fvg\nas to bypass the original fvg need extrememly  big power",
+      "front": "甚麼是 iFVG？",
+      "back": "兩個不同 FVG 重疊的位置。比單一 FVG 更強，因為要 bypass 原 FVG 需要極大 power。",
+      "originalFront": "what is ifvg",
+      "originalBack": "two different fvg overlap place\nbetter than 1 fvg\nas to bypass the original fvg need extrememly  big power",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 iFVG 概念"
     },
     {
       "id": "1770706441390",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "what is ob",
-      "back": "order block \n 大跌前/大升前 最後一根+candle or-ve candle",
+      "front": "甚麼是 OB？",
+      "back": "OB（order block）是大跌前或大升前最後一根陽線（+ve candle）或陰線（-ve candle）。",
+      "originalFront": "what is ob",
+      "originalBack": "order block \n 大跌前/大升前 最後一根+candle or-ve candle",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開 OB 定義"
     },
     {
       "id": "1770706506117",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "what is breaker block",
-      "back": "原本的ob 被人超越 變左breaker block",
+      "front": "甚麼是 breaker block？",
+      "back": "原本的 OB 被價格超越後，會變成 breaker block。",
+      "originalFront": "what is breaker block",
+      "originalBack": "原本的ob 被人超越 變左breaker block",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770706618739",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is premium discount equilibrium",
-      "back": "拉fibo 0-1 \n0.5係equilibrium\n即中間位\npremium -space higher than 0.5 -better for sell\ndiscount-space lower than 0.5 -better for buy",
+      "front": "premium、discount 同 equilibrium 點定義？",
+      "back": "拉 Fibonacci 0–1，0.5 為 equilibrium（中間位）。premium：高於 0.5 的區間，較適合做空。discount：低於 0.5 的區間，較適合買入。",
+      "originalFront": "what is premium discount equilibrium",
+      "originalBack": "拉fibo 0-1 \n0.5係equilibrium\n即中間位\npremium -space higher than 0.5 -better for sell\ndiscount-space lower than 0.5 -better for buy",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 premium 拼寫"
     },
     {
       "id": "1770706646817",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is risk and reward",
-      "back": "rr ration\nto calculate the profit and stop loss",
+      "front": "甚麼是 risk and reward（RR）？",
+      "back": "RR ratio 用來計算潛在利潤與止損距離的比例。",
+      "originalFront": "what is risk and reward",
+      "originalBack": "rr ration\nto calculate the profit and stop loss",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開 RR"
     },
     {
       "id": "1770707095589",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is fiboancci retracement",
-      "back": "0.618,0.705,0.786潛在轉勢\n上高低拉高 下跌高拉低 \n會係呢d位做bos\n1.272,1.13 呢兩個位有機係假火",
+      "front": "Fibonacci retracement 常用位有咩意義？",
+      "back": "0.618、0.705、0.786 為潛在轉勢位；上升時由低拉高，下跌時由高拉低，常在這些位出現 BOS。1.272、1.13 兩位有機會是假火。",
+      "originalFront": "what is fiboancci retracement",
+      "originalBack": "0.618,0.705,0.786潛在轉勢\n上高低拉高 下跌高拉低 \n會係呢d位做bos\n1.272,1.13 呢兩個位有機係假火",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留斐波位"
     },
     {
       "id": "1770707359310",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "whati smt divergence",
-      "back": "兩個高度相關市場 正常同步但突然唔同\na higher high b lower high = bearish\na lower low b high lower = bullish",
+      "front": "甚麼是 SMT divergence？",
+      "back": "兩個高度相關市場通常同步，突然唔同步即 SMT divergence。A 創 higher high、B 創 lower high → 偏空。A 創 lower low、B 創 higher low → 偏多。",
+      "originalFront": "whati smt divergence",
+      "originalBack": "兩個高度相關市場 正常同步但突然唔同\na higher high b lower high = bearish\na lower low b high lower = bullish",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "修正原卡 bullish 筆誤"
     },
     {
       "id": "1770707449618",
       "chapter": "ch7",
       "lesson": "po3",
-      "front": "what is po3",
-      "back": "accumlation,manupulation,distribution\n吸籌-橫盤，誘騙-假火，分配-真火",
+      "front": "甚麼是 PO3？",
+      "back": "PO3 三階段：accumulation（吸籌／橫盤）、manipulation（誘騙／假火）、distribution（分配／真火）。",
+      "originalFront": "what is po3",
+      "originalBack": "accumlation,manupulation,distribution\n吸籌-橫盤，誘騙-假火，分配-真火",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 PO3"
     },
     {
       "id": "1770707635505",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is cisd",
-      "back": "change in state of delivery\n早期標誌轉變\n即係bos/choch \n假設是下跌 下跌開始的candle升返上過埋下跌既open price",
+      "front": "甚麼是 CISD？",
+      "back": "CISD（change in state of delivery）是早期轉變標誌，類似 BOS/CHoCH。假設下跌中，下跌開始那根 K 的價格升返並過咗該根 open，即可能出現 CISD。",
+      "originalFront": "what is cisd",
+      "originalBack": "change in state of delivery\n早期標誌轉變\n即係bos/choch \n假設是下跌 下跌開始的candle升返上過埋下跌既open price",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 CISD 定義"
     },
     {
       "id": "1770707657231",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what two main liquidity u have",
-      "back": "external and internal",
+      "front": "流動性主要分哪兩類？",
+      "back": "主要分 external（外部）同 internal（內部）兩類。",
+      "originalFront": "what two main liquidity u have",
+      "originalBack": "external and internal",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770707672182",
       "chapter": "ch2",
       "lesson": "structure",
-      "front": "what is dol",
-      "back": "打內部流動性",
+      "front": "甚麼是 DOL？",
+      "back": "DOL 指打內部流動性（draw on liquidity / internal liquidity）。",
+      "originalFront": "what is dol",
+      "originalBack": "打內部流動性",
       "sourceDeck": "03_Trading/basic",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "保留 DOL"
     },
     {
       "id": "1770707756301",
       "chapter": "ch1",
       "lesson": "phases",
-      "front": "市場四trend",
-      "back": "accumlaion,uptrend,distribution,downtrend then again",
+      "front": "市場有四種 trend 階段，係咩？",
+      "back": "accumulation → uptrend → distribution → downtrend，然後循環再來。",
+      "originalFront": "市場四trend",
+      "originalBack": "accumlaion,uptrend,distribution,downtrend then again",
       "sourceDeck": "03_Trading/market sense",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全循環"
     },
     {
       "id": "1770707799721",
       "chapter": "ch1",
       "lesson": "phases",
-      "front": "why u need to know which trend u are",
-      "back": "find the turning point,understanding which  trend u are ,different trend different strat",
+      "front": "點解要知道自己處於邊種 trend？",
+      "back": "要搵轉折點、理解當前 trend，唔同 trend 用唔同策略。",
+      "originalFront": "why u need to know which trend u are",
+      "originalBack": "find the turning point,understanding which  trend u are ,different trend different strat",
       "sourceDeck": "03_Trading/market sense",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留口語"
     },
     {
       "id": "1770707984139",
       "chapter": "ch1",
       "lesson": "phases",
-      "front": "以market 變左人為例",
-      "back": "朝早-精神\n中午-玩完咪攰\n下午-攰了訓哂\n傍晚-醒左又起身 但慢慢伸懶腰 accumlation\n晚上-又精神哂",
+      "front": "用「市場變咗做人」點比喻四階段？",
+      "back": "朝早—精神；中午—玩完攰；下午—攰到訓晒；傍晚—醒咗慢慢伸懶腰（accumulation）；晚上—又精神晒。",
+      "originalFront": "以market 變左人為例",
+      "originalBack": "朝早-精神\n中午-玩完咪攰\n下午-攰了訓哂\n傍晚-醒左又起身 但慢慢伸懶腰 accumlation\n晚上-又精神哂",
       "sourceDeck": "03_Trading/market sense",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留生活比喻"
     },
     {
       "id": "1770708399454",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "explain頭肩底",
-      "back": "看漲先放量跌縮量再跌放量升左肩-大家panic sell 機構入\n右肩-再跌但賣方無力\n頸線：左肩右肩反彈高點 作為空方最後防線",
+      "front": "點解釋頭肩底形態？",
+      "back": "看漲：先放量跌、縮量再跌、放量升。左肩—大家 panic sell，機構入貨。右肩—再跌但賣方無力。頸線連接左肩、右肩反彈高點，係空方最後防線。",
+      "originalFront": "explain頭肩底",
+      "originalBack": "看漲先放量跌縮量再跌放量升左肩-大家panic sell 機構入\n右肩-再跌但賣方無力\n頸線：左肩右肩反彈高點 作為空方最後防線",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化頭肩底"
     },
     {
       "id": "1770708534141",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "頭肩頂",
-      "back": "看跌先放量升縮量再升放量跌一次升得少過一次\n左肩-大家追高 機構散貨\n右肩-再升買方無力\n頸線：左肩右肩反彈低點 作為多方最後防線",
+      "front": "點解釋頭肩頂形態？",
+      "back": "看跌：先放量升、縮量再升、放量跌；一次升得少過一次。左肩—大家追高，機構散貨。右肩—再升但買方無力。頸線連接左肩、右肩反彈低點，係多方最後防線。",
+      "originalFront": "頭肩頂",
+      "originalBack": "看跌先放量升縮量再升放量跌一次升得少過一次\n左肩-大家追高 機構散貨\n右肩-再升買方無力\n頸線：左肩右肩反彈低點 作為多方最後防線",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化頭肩頂"
     },
     {
       "id": "1770708571078",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "成交量升 但升得少代表",
-      "back": "唔想升了",
+      "front": "成交量升但價格升得少代表咩？",
+      "back": "代表買方唔想再升，上升動能轉弱。",
+      "originalFront": "成交量升 但升得少代表",
+      "originalBack": "唔想升了",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": false,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開「唔想升」"
     },
     {
       "id": "1770708623944",
       "chapter": "ch8",
       "lesson": "patterns",
-      "front": "支撐壓力點confirm為有效",
-      "back": "越多影線越好\n有明顯轉折",
+      "front": "點樣確認支撐／阻力有效？",
+      "back": "影線測試次數越多越好，並要有明顯轉折。",
+      "originalFront": "支撐壓力點confirm為有效",
+      "originalBack": "越多影線越好\n有明顯轉折",
       "sourceDeck": "03_Trading/pattern",
       "quizEligible": false,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全兩條件"
     },
     {
       "id": "1770708931504",
       "chapter": "ch1",
       "lesson": "dow",
-      "front": "道氏6大核心",
-      "back": "市場包容一齊三個trend三個階段指數互證成交量互證trend continue until siginficant choch",
+      "front": "道氏理論六大核心是咩？",
+      "back": "市場包容一切；三種 trend；三個階段；指數互證；成交量互證；trend 持續直至出現 significant CHoCH。",
+      "originalFront": "道氏6大核心",
+      "originalBack": "市場包容一齊三個trend三個階段指數互證成交量互證trend continue until siginficant choch",
       "sourceDeck": "03_Trading/道氏理論",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "分列六項"
     },
     {
       "id": "1770709117063",
       "chapter": "ch1",
       "lesson": "dow",
-      "front": "解釋六大核心",
-      "back": "所有波動都是有原因 \n大trend-小trend-minor movement\n三state-accumlation,爆發，狂熱大家追就死得\nbitcoin price rise-market 佔有上\n成交量會跟trend增加",
+      "front": "點解釋道氏六大核心？",
+      "back": "所有波動都有原因。大 trend、小 trend、minor movement 並存。三 state：accumulation、爆發、狂熱（大家追就易死）。Bitcoin 升代表市場佔優。成交量會跟 trend 增加。",
+      "originalFront": "解釋六大核心",
+      "originalBack": "所有波動都是有原因 \n大trend-小trend-minor movement\n三state-accumlation,爆發，狂熱大家追就死得\nbitcoin price rise-market 佔有上\n成交量會跟trend增加",
       "sourceDeck": "03_Trading/道氏理論",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開各點"
     },
     {
       "id": "1770709380853",
       "chapter": "ch4",
       "lesson": "flow",
-      "front": "成交量如何驗證",
-      "back": "成交量跟價格成正\n當方向不一樣 divergence\n價漲量縮上升無力",
+      "front": "成交量點樣驗證價格？",
+      "back": "成交量通常跟價格方向一致。方向唔一致即 divergence。價漲量縮代表上升無力。",
+      "originalFront": "成交量如何驗證",
+      "originalBack": "成交量跟價格成正\n當方向不一樣 divergence\n價漲量縮上升無力",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全驗證邏輯"
     },
     {
       "id": "1770711700489",
       "chapter": "ch5",
       "lesson": "indicators",
-      "front": "Macd",
-      "back": "快線（藍）與慢線（橙）＋柱狀體。\n雙線在 0 軸上方偏多；0 軸下方偏空。\n0 軸上金叉偏多；0 軸下金叉反彈但慎追。\n0 軸上死叉偏空；0 軸下死叉偏空延續。\n（已整理原卡重複敘述）",
+      "front": "MACD 點樣解讀？",
+      "back": "快線（藍）與慢線（橙）加柱狀體。雙線在 0 軸上方偏多；0 軸下方偏空。0 軸上金叉偏多；0 軸下金叉反彈但慎追。0 軸上死叉偏空；0 軸下死叉偏空延續。",
+      "originalFront": "Macd",
+      "originalBack": "快線（藍）與慢線（橙）＋柱狀體。\n雙線在 0 軸上方偏多；0 軸下方偏空。\n0 軸上金叉偏多；0 軸下金叉反彈但慎追。\n0 軸上死叉偏空；0 軸下死叉偏空延續。\n（已整理原卡重複敘述）",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留已整理 MACD 內容"
     },
     {
       "id": "1770711740362",
       "chapter": "ch5",
       "lesson": "indicators",
-      "front": "macd divergence",
-      "back": "pricec down macd up-buy\nprice up macd down-sell",
+      "front": "MACD divergence 點睇？",
+      "back": "價格跌、MACD 升 → 偏多（買）。價格升、MACD 跌 → 偏空（賣）。",
+      "originalFront": "macd divergence",
+      "originalBack": "pricec down macd up-buy\nprice up macd down-sell",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "中文化背離"
     },
     {
       "id": "1770711930189",
       "chapter": "ch5",
       "lesson": "indicators",
-      "front": "rsi and divergence",
-      "back": "RSI >70：超買（不是超賣）；RSI <30：超賣。\nRSI >90 時空頭機會較佳；RSI <30 偏多觀察。\n背離：價創新高但 RSI 未創新高 → 買力轉弱（偏空）；價創新低但 RSI 未創新低 → 賣力轉弱（偏多）。\n（已校正原 Anki 卡「>70 超賣」錯誤）",
+      "front": "RSI 同背離點樣用？",
+      "back": "RSI >70：超買（不是超賣）；RSI <30：超賣。RSI >90 時空頭機會較佳；RSI <30 偏多觀察。背離：價創新高但 RSI 未創新高 → 買力轉弱（偏空）；價創新低但 RSI 未創新低 → 賣力轉弱（偏多）。",
+      "originalFront": "rsi and divergence",
+      "originalBack": "RSI >70：超買（不是超賣）；RSI <30：超賣。\nRSI >90 時空頭機會較佳；RSI <30 偏多觀察。\n背離：價創新高但 RSI 未創新高 → 買力轉弱（偏空）；價創新低但 RSI 未創新低 → 賣力轉弱（偏多）。\n（已校正原 Anki 卡「>70 超賣」錯誤）",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留 RSI>70 超買修正"
     },
     {
       "id": "1770712026622",
       "chapter": "ch5",
       "lesson": "indicators",
-      "front": "what is atr",
-      "back": "市場震盪幅\natr 高 價格波動高\natr low price breakout -may fake breakout\nATR up,price breakout-true fakeout",
+      "front": "甚麼是 ATR？",
+      "back": "ATR 衡量市場震盪幅度。ATR 高代表波動大。ATR 低時若 breakout，可能是假突破。ATR 上升配合 breakout，真突破機會較高。",
+      "originalFront": "what is atr",
+      "originalBack": "市場震盪幅\natr 高 價格波動高\natr low price breakout -may fake breakout\nATR up,price breakout-true fakeout",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留 ATR 修正（非 art）"
     },
     {
       "id": "1770712848791",
       "chapter": "ch4",
       "lesson": "flow",
-      "front": "cvd",
-      "back": "累積成交量差值 \nbuy>sell cvd up\nbuy<sell down\n買入吸納 (Bullish Absorption)： 價格下跌，但 CVD 向上（淨買入增加）。代表有人在低位被動吸納賣單。賣出吸納 (Bearish Absorption)： 價格上漲，但 CVD 向下（淨賣出增加）。代表有人在高位被動吸納買單。買入力竭 (Bullish Exhaustion)： 價格上漲，但 CVD 停止上升甚至下跌（成交量買力減弱）。賣出力竭 (Bearish Exhaustion)： 價格下跌，但 CVD 停止下降甚至上升（成交量賣力減弱）。",
+      "front": "CVD 係咩？點解讀？",
+      "back": "CVD 是累積成交量差值：買 > 賣則 CVD 向上，反之向下。買入吸納：價跌但 CVD 升。賣出吸納：價升但 CVD 跌。買入力竭：價升但 CVD 停升或跌。賣出力竭：價跌但 CVD 停跌或升。",
+      "originalFront": "cvd",
+      "originalBack": "累積成交量差值 \nbuy>sell cvd up\nbuy<sell down\n買入吸納 (Bullish Absorption)： 價格下跌，但 CVD 向上（淨買入增加）。代表有人在低位被動吸納賣單。賣出吸納 (Bearish Absorption)： 價格上漲，但 CVD 向下（淨賣出增加）。代表有人在高位被動吸納買單。買入力竭 (Bullish Exhaustion)： 價格上漲，但 CVD 停止上升甚至下跌（成交量買力減弱）。賣出力竭 (Bearish Exhaustion)： 價格下跌，但 CVD 停止下降甚至上升（成交量賣力減弱）。",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "濃縮四種型態"
     },
     {
       "id": "1770712913056",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "ob+fvg =?",
-      "back": "噴火龍",
+      "front": "OB 加 FVG 一齊出現叫咩？",
+      "back": "叫「噴火龍」setup。",
+      "originalFront": "ob+fvg =?",
+      "originalBack": "噴火龍",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": false,
-      "corrected": false
+      "corrected": false,
+      "rewriteNote": "補全問句"
     },
     {
       "id": "1770713287851",
       "chapter": "ch1",
       "lesson": "dow",
-      "front": "bull market and  bear market phase",
-      "back": "market accumlation:\nbackground end of bear market\nmain investor :smart money buy\nprice and volumne drop down become smaller\n\nmarket public paticpation:\nbackground market turn good,media postive\nmain investor :most people buy\nprice and volumne going up and bigger\n\nmarket cls phase:\nfomo,last raise ,everyone is buying\n\nmarket distribution:\nstart slowing up,smart money sell,start low volume\n\npublic partipication sell:\nkeep selling,lower high\n\npanice sell:\neveryone panic and sell drop extremely fast",
+      "front": "牛市同熊市各有哪些階段？",
+      "back": "accumulation：熊市尾、聰明錢買入，價量縮小。public participation：市場轉好、媒體正面，大眾買入，價量上升。excess/狂熱：FOMO、最後拉升。distribution：升勢放緩、聰明錢賣出、量縮。public participation sell：持續賣、lower high。panic sell：恐慌急跌。",
+      "originalFront": "bull market and  bear market phase",
+      "originalBack": "market accumlation:\nbackground end of bear market\nmain investor :smart money buy\nprice and volumne drop down become smaller\n\nmarket public paticpation:\nbackground market turn good,media postive\nmain investor :most people buy\nprice and volumne going up and bigger\n\nmarket cls phase:\nfomo,last raise ,everyone is buying\n\nmarket distribution:\nstart slowing up,smart money sell,start low volume\n\npublic partipication sell:\nkeep selling,lower high\n\npanice sell:\neveryone panic and sell drop extremely fast",
       "sourceDeck": "03_Trading/道氏理論",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化各階段"
     },
     {
       "id": "1770713399322",
       "chapter": "ch1",
       "lesson": "dow",
-      "front": "why secondary trend",
-      "back": "橫盤 消化買賣 換手",
+      "front": "點解會有次級 trend（secondary trend）？",
+      "back": "用來橫盤、消化買賣同換手。",
+      "originalFront": "why secondary trend",
+      "originalBack": "橫盤 消化買賣 換手",
       "sourceDeck": "03_Trading/道氏理論",
       "quizEligible": false,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770713475622",
       "chapter": "ch4",
       "lesson": "derivs",
-      "front": "open interest oi",
-      "back": "開倉持倉量 未平倉\n+ve 做多人較多\n-ve 做空人較多",
+      "front": "Open Interest（OI）代表咩？",
+      "back": "OI 是開倉持倉量（未平倉合約）。+ve 代表做多的人較多；-ve 代表做空的人較多。",
+      "originalFront": "open interest oi",
+      "originalBack": "開倉持倉量 未平倉\n+ve 做多人較多\n-ve 做空人較多",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開 OI"
     },
     {
       "id": "1770713721528",
       "chapter": "ch4",
       "lesson": "derivs",
-      "front": "u 的價位差",
-      "back": "大機構抄底要大量u 會令u 價格上\n合約現貨價差正常80-200",
+      "front": "U 本位合約同現貨的價差點睇？",
+      "back": "大機構抄底要大量 U 會推高 U 價。合約與現貨價差正常約 80–200。",
+      "originalFront": "u 的價位差",
+      "originalBack": "大機構抄底要大量u 會令u 價格上\n合約現貨價差正常80-200",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "澄清 U 指穩定幣"
     },
     {
       "id": "1770713950584",
       "chapter": "ch4",
       "lesson": "derivs",
-      "front": "資金費率",
-      "back": "+ve = buy  give money to sell\n-ve =sell give money to buy\n正常 +-0.05 8小時一次 \n不正常 每4小時一次\n0.05-0.1 unnormal\n0.1-0.15 可以套利\n0.15-0.2 confirm套利 \n0.2 cls",
+      "front": "資金費率點解讀？",
+      "back": "+ve：做多付費給做空。-ve：做空付費給做多。正常約 ±0.05，每 8 小時一次。不正常可每 4 小時一次。0.05–0.1 異常；0.1–0.15 可套利；0.15–0.2 確認套利；0.2 以上極端。",
+      "originalFront": "資金費率",
+      "originalBack": "+ve = buy  give money to sell\n-ve =sell give money to buy\n正常 +-0.05 8小時一次 \n不正常 每4小時一次\n0.05-0.1 unnormal\n0.1-0.15 可以套利\n0.15-0.2 confirm套利 \n0.2 cls",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留費率區間"
     },
     {
       "id": "1770714069983",
       "chapter": "ch4",
       "lesson": "flow",
-      "front": "volumne",
-      "back": "vol - price same =good\nvol up price down =buy\nvol don price up=sell 冇成交量支撐 冇力",
+      "front": "成交量同價格點配合？",
+      "back": "量價同向 = 健康。量升價跌 = 買入機會。量縮價升 = 賣出信號，冇量支撐升唔力。",
+      "originalFront": "volumne",
+      "originalBack": "vol - price same =good\nvol up price down =buy\nvol don price up=sell 冇成交量支撐 冇力",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留量價關係"
     },
     {
       "id": "1770714100945",
       "chapter": "ch5",
       "lesson": "indicators",
-      "front": "vwap and twap",
-      "back": "volume weighat average price and time weighted average price",
+      "front": "VWAP 同 TWAP 分別係咩？",
+      "back": "VWAP 是 volume weighted average price（成交量加權平均價）。TWAP 是 time weighted average price（時間加權平均價）。",
+      "originalFront": "vwap and twap",
+      "originalBack": "volume weighat average price and time weighted average price",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開縮寫"
     },
     {
       "id": "1770714250770",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "點樣搵爆升",
-      "back": "夠乾夠悶 \n彈彈波入 \n貨源歸邊",
+      "front": "點樣搵可能爆升嘅 altcoin？",
+      "back": "要夠乾、夠悶。用彈彈波入場。留意貨源歸邊（籌碼集中）。",
+      "originalFront": "點樣搵爆升",
+      "originalBack": "夠乾夠悶 \n彈彈波入 \n貨源歸邊",
       "sourceDeck": "03_Trading/altcoin",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "保留三點要訣"
     },
     {
       "id": "1770714345123",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "貨lift理論",
-      "back": "因為lift輕咪上得快 要少人自然要整走人所以要冇人所以乾",
+      "front": "「貨 lift」理論係咩？",
+      "back": "貨少即 lift 輕，升得快。要少人持貨就要先整走人，所以市場要夠乾。",
+      "originalFront": "貨lift理論",
+      "originalBack": "因為lift輕咪上得快 要少人自然要整走人所以要冇人所以乾",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開 lift 比喻"
     },
     {
       "id": "1770714416873",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "sky trap",
-      "back": "拉到最高一野落去",
+      "front": "甚麼是 sky trap？",
+      "back": "sky trap 是拉到最高後一野跌落去，專門套住追高者。",
+      "originalFront": "sky trap",
+      "originalBack": "拉到最高一野落去",
       "sourceDeck": "03_Trading/altcoin",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全定義"
     },
     {
       "id": "1770714516322",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "點樣睇方向",
-      "back": "可以睇coin glass ratio\n散戶多空調轉做",
+      "front": "altcoin 方向點樣睇？",
+      "back": "可以睇 CoinGlass ratio 等數據。散戶多空比往往要調轉理解來用。",
+      "originalFront": "點樣睇方向",
+      "originalBack": "可以睇coin glass ratio\n散戶多空調轉做",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 contrarian 思路"
     },
     {
       "id": "1770714615794",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "幾時入",
-      "back": "ath 磨入 大力狗狗 \n中間平台入 \noverextended唔考慮",
+      "front": "altcoin 幾時入場？",
+      "back": "ATH 附近磨入、大力狗狗形態、或中間平台入場。overextended 唔考慮。",
+      "originalFront": "幾時入",
+      "originalBack": "ath 磨入 大力狗狗 \n中間平台入 \noverextended唔考慮",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留入場情境"
     },
     {
       "id": "1770714655121",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "點解要睇升幅榜同跌幅",
-      "back": "資金係個度 強者恆強 weak also weak",
+      "front": "點解要睇升幅榜同跌幅榜？",
+      "back": "資金集中喺強勢標的，強者恆強，弱者亦弱。",
+      "originalFront": "點解要睇升幅榜同跌幅",
+      "originalBack": "資金係個度 強者恆強 weak also weak",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770714783033",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "what is poc",
-      "back": "交易量最高的時段價格水平",
+      "front": "甚麼是 POC？",
+      "back": "POC 是成交量 profile 中交易量最高的價格水平。",
+      "originalFront": "what is poc",
+      "originalBack": "交易量最高的時段價格水平",
       "sourceDeck": "03_Trading/volume profile",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全定義"
     },
     {
       "id": "1770714856311",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "vah val",
-      "back": "vah-區域最高價格水平 \nval-區域最低價格水平 \nva-總交易量70%",
+      "front": "VAH 同 VAL 係咩？",
+      "back": "VAH：價值區最高價格水平。VAL：價值區最低價格水平。VA 涵蓋約 70% 總成交量。",
+      "originalFront": "vah val",
+      "originalBack": "vah-區域最高價格水平 \nval-區域最低價格水平 \nva-總交易量70%",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 70% VA"
     },
     {
       "id": "1770714982842",
       "chapter": "ch5",
       "lesson": "indicators",
-      "front": "ema 日數均線",
-      "back": "200  ema - long term\n20 ma short term\nabove average and consistenly above -up\nbelow average-down trend\nside way-stay away",
+      "front": "EMA 日數均線點用？",
+      "back": "200 EMA 看長期；20 MA 看短期。價格持續在均線上方 → 上升。持續在下方 → 下跌。橫行 → 少做。",
+      "originalFront": "ema 日數均線",
+      "originalBack": "200  ema - long term\n20 ma short term\nabove average and consistenly above -up\nbelow average-down trend\nside way-stay away",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化均線規則"
     },
     {
       "id": "1770715050344",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "甚麼是自然反彈高點",
-      "back": "一次大插針後 回彈 \n呢個高點大機會俾人打上去再落去",
+      "front": "甚麼是自然反彈高點？",
+      "back": "一次大插針後的反彈高點。這個高點大機會先被掃上去再跌返落去。",
+      "originalFront": "甚麼是自然反彈高點",
+      "originalBack": "一次大插針後 回彈 \n呢個高點大機會俾人打上去再落去",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全定義"
     },
     {
       "id": "1770715115407",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "volume profile",
-      "back": "其實係 based on market behaviour and prvoide hints for future",
+      "front": "volume profile 係咩？",
+      "back": "volume profile 基於市場行為，為未來價格走勢提供提示。",
+      "originalFront": "volume profile",
+      "originalBack": "其實係 based on market behaviour and prvoide hints for future",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "中文化"
     },
     {
       "id": "1770715148689",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "soemtime not fvg reject,what reject",
-      "back": "vwap node",
+      "front": "有時唔係 FVG reject，會係咩 reject？",
+      "back": "可能是 VWAP node 的 reject。",
+      "originalFront": "soemtime not fvg reject,what reject",
+      "originalBack": "vwap node",
       "sourceDeck": "03_Trading/basic",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "保留 VWAP node"
     },
     {
       "id": "1770715433818",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "甚麼是魔法彈彈雲",
-      "back": "當價格回調至hvn(成交量高節點)\n可持做多機會 前提是uptrend\nhvn是被市場接受的價值區域  有機會成為支撐",
+      "front": "甚麼是「魔法彈彈雲」？",
+      "back": "當價格回調至 HVN（成交量高節點），在 uptrend 前提下可持做多。HVN 是被市場接受的價值區，有機會成為支撐。",
+      "originalFront": "甚麼是魔法彈彈雲",
+      "originalBack": "當價格回調至hvn(成交量高節點)\n可持做多機會 前提是uptrend\nhvn是被市場接受的價值區域  有機會成為支撐",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 HVN 條件"
     },
     {
       "id": "1770715516845",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "甚麼是黏黏天花板",
-      "back": "down trend\nback to hvn\nmight be resistance\n痴唔住就落去了",
+      "front": "甚麼是「黏黏天花板」？",
+      "back": "downtrend 中價格回到 HVN，可能形成阻力。若黏唔住就會跌落去。",
+      "originalFront": "甚麼是黏黏天花板",
+      "originalBack": "down trend\nback to hvn\nmight be resistance\n痴唔住就落去了",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留口語"
     },
     {
       "id": "1770715865077",
       "chapter": "ch8",
       "lesson": "p1p2",
-      "front": "how to entry",
-      "back": "when the price go to ur poi\n等收針 = 動力出現 \n過收針既open = 動力確認",
+      "front": "到 POI 後點樣入場？",
+      "back": "價格到 POI 後，等收針（動力出現）。過收針那根 K 的 open 即動力確認，可入場。",
+      "originalFront": "how to entry",
+      "originalBack": "when the price go to ur poi\n等收針 = 動力出現 \n過收針既open = 動力確認",
       "sourceDeck": "03_Trading/p1p2b1b2",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留收針規則"
     },
     {
       "id": "1770716046896",
       "chapter": "ch8",
       "lesson": "p1p2",
-      "front": "p1p2 b1b2",
-      "back": "通常上升(spike)回調時會p1p2\n回調p1 第一次進通常會有 p2 更低點機構打止損\n散戶認為冇希望 然後上去 \n通常上升回調時會b1b2\n回調b1 第一次進通常會有 b2更高點 機構打止損\n散戶認為冇希望 然後下去 \n\nspike = 勁多fvg",
+      "front": "P1P2 同 B1B2 係咩？",
+      "back": "上升 spike 回調常見 P1P2：回調 P1 後常有 P2 更低點掃止損，散戶絕望後再升。上升回調亦見 B1B2：B1 後常有 B2 更高點掃止損，散戶絕望後再跌。spike 通常伴隨大量 FVG。",
+      "originalFront": "p1p2 b1b2",
+      "originalBack": "通常上升(spike)回調時會p1p2\n回調p1 第一次進通常會有 p2 更低點機構打止損\n散戶認為冇希望 然後上去 \n通常上升回調時會b1b2\n回調b1 第一次進通常會有 b2更高點 機構打止損\n散戶認為冇希望 然後下去 \n\nspike = 勁多fvg",
       "sourceDeck": "03_Trading/p1p2b1b2",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "濃縮 P1P2/B1B2"
     },
     {
       "id": "1770716221362",
       "chapter": "ch8",
       "lesson": "p1p2",
-      "front": "p2 三種形態",
-      "back": "lower low,double bottom and higher low",
+      "front": "P2 有三種形態，係咩？",
+      "back": "lower low、double bottom、higher low。",
+      "originalFront": "p2 三種形態",
+      "originalBack": "lower low,double bottom and higher low",
       "sourceDeck": "03_Trading/p1p2b1b2",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全問句"
     },
     {
       "id": "1770716241435",
       "chapter": "ch8",
       "lesson": "p1p2",
-      "front": "b2 3 type",
-      "back": "higher high,double top ,lower high",
+      "front": "B2 有三種形態，係咩？",
+      "back": "higher high、double top、lower high。",
+      "originalFront": "b2 3 type",
+      "originalBack": "higher high,double top ,lower high",
       "sourceDeck": "03_Trading/p1p2b1b2",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全問句"
     },
     {
       "id": "1770716301471",
       "chapter": "ch8",
       "lesson": "p1p2",
-      "front": "why sometimes p3",
-      "back": "to trap ,when p2 fail ,sell side go in that reversal to kill sell side\n\nsame as b2",
+      "front": "點解有時會出現 P3？",
+      "back": "用來 trap：當 P2 失敗，賣方入場做 reversal 掃走賣方止損。B2 失敗時同理。",
+      "originalFront": "why sometimes p3",
+      "originalBack": "to trap ,when p2 fail ,sell side go in that reversal to kill sell side\n\nsame as b2",
       "sourceDeck": "03_Trading/p1p2b1b2",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 trap 邏輯"
     },
     {
       "id": "1770716708667",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "how to place to volumne profie",
-      "back": "1.main swing\n2.a main swing and a half swing",
+      "front": "volume profile 點樣放置？",
+      "back": "1. 一個 main swing\n2. 一個 main swing 加半個 swing",
+      "originalFront": "how to place to volumne profie",
+      "originalBack": "1.main swing\n2.a main swing and a half swing",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留兩種放法"
     },
     {
       "id": "1770716739536",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "what is hvn and lvn",
-      "back": "hvn ,most people trade area,can be support or resistance\nbut lvn can be passtrhough so quick",
+      "front": "HVN 同 LVN 分別係咩？",
+      "back": "HVN 是成交集中區，可成支撐或阻力。LVN 成交稀薄，價格常快速穿過。",
+      "originalFront": "what is hvn and lvn",
+      "originalBack": "hvn ,most people trade area,can be support or resistance\nbut lvn can be passtrhough so quick",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 HVN/LVN"
     },
     {
       "id": "1770717205258",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "voulme profile use suitation",
-      "back": "1.find liqduidty where is the most stop loss pos\n2.vp find the ob\n3.if simlir hvn can be a a single volume profile",
+      "front": "volume profile 適用於咩情況？",
+      "back": "1. 找 liquidity／止損集中位置\n2. 用 VP 找 OB\n3. 相似 HVN 可合併為單一 volume profile",
+      "originalFront": "voulme profile use suitation",
+      "originalBack": "1.find liqduidty where is the most stop loss pos\n2.vp find the ob\n3.if simlir hvn can be a a single volume profile",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留三種用途"
     },
     {
       "id": "1770717320925",
       "chapter": "ch4",
       "lesson": "vp",
-      "front": "use vp to find fvg",
-      "back": "pre swing low current swing high as vp\nlvn as a fvg\nwhen retest,only wait return to above fvg 50% then go",
+      "front": "點用 VP 搵 FVG？",
+      "back": "以前一 swing low 至當前 swing high 畫 VP，LVN 可視作 FVG。回測時要等價格回到 FVG 50% 以上再行動。",
+      "originalFront": "use vp to find fvg",
+      "originalBack": "pre swing low current swing high as vp\nlvn as a fvg\nwhen retest,only wait return to above fvg 50% then go",
       "sourceDeck": "03_Trading/volume profile",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 50% 規則"
     },
     {
       "id": "1770717649530",
       "chapter": "ch4",
       "lesson": "auction",
-      "front": "what is limit order",
-      "back": "莊家用 等待價格位 changetrend",
+      "front": "甚麼是 limit order？",
+      "back": "莊家常用 limit order 等待價格到達目標位才成交，用來 change trend。",
+      "originalFront": "what is limit order",
+      "originalBack": "莊家用 等待價格位 changetrend",
       "sourceDeck": "03_Trading/auction book theory",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全拍賣理論語境"
     },
     {
       "id": "1770717671850",
       "chapter": "ch4",
       "lesson": "auction",
-      "front": "what is delta",
-      "back": "marktet order =buy-sell =delta",
+      "front": "甚麼是 delta？",
+      "back": "delta = market order 買量減賣量，反映即時主動買賣差。",
+      "originalFront": "what is delta",
+      "originalBack": "marktet order =buy-sell =delta",
       "sourceDeck": "03_Trading/auction book theory",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開公式"
     },
     {
       "id": "1770717835058",
       "chapter": "ch4",
       "lesson": "auction",
-      "front": "拍賣市場理論",
-      "back": "價格 -傳遞市場機會 \n時間-調節價格機會\n成交量 -衡量拍賣的成敗",
+      "front": "拍賣市場理論的三要素係咩？",
+      "back": "價格—傳遞市場機會。時間—調節價格機會。成交量—衡量拍賣成敗。",
+      "originalFront": "拍賣市場理論",
+      "originalBack": "價格 -傳遞市場機會 \n時間-調節價格機會\n成交量 -衡量拍賣的成敗",
       "sourceDeck": "03_Trading/auction book theory",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "結構化三要素"
     },
     {
       "id": "1770718322416",
       "chapter": "ch4",
       "lesson": "auction",
-      "front": "拍賣市場真正意思",
-      "back": "1.balance- symmetric 買賣雙方達成協議 流動性平衡點上下方 \n2.拍賣失敗-價格突破區間但冇成交量 delta冇變化 = significant reject\n3.拍賣成功＝成交量大幅增加，價格被時間空間接受 以及fail to return,delta有明顯變化及價格區域有明顯強勁波動",
+      "front": "拍賣市場理論的真正意思係咩？",
+      "back": "1. balance：買賣對稱、達成共識，流動性平衡於區間上下方\n2. 拍賣失敗：價格突破區間但冇量、delta 冇變 = significant reject\n3. 拍賣成功：成交量大增，價格被時間與空間接受，fail to return，delta 明顯變化且區間波動強勁",
+      "originalFront": "拍賣市場真正意思",
+      "originalBack": "1.balance- symmetric 買賣雙方達成協議 流動性平衡點上下方 \n2.拍賣失敗-價格突破區間但冇成交量 delta冇變化 = significant reject\n3.拍賣成功＝成交量大幅增加，價格被時間空間接受 以及fail to return,delta有明顯變化及價格區域有明顯強勁波動",
       "sourceDeck": "03_Trading/auction book theory",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留三狀態定義"
     },
     {
       "id": "1770718366318",
       "chapter": "ch4",
       "lesson": "auction",
       "front": "拍賣市場理論可以用咩生活比喻理解？",
-      "back": "理解成 市場共識 大家ok咪升 唔ok就跌 整理區間就係大家傾計話咁樣升/跌o唔ok 凌亂即大家講唔掂數",
+      "back": "理解成市場共識：大家 OK 就升，唔 OK 就跌。整理區間係大家傾升/跌 o 唔 oK。凌亂即講唔掂數。",
+      "originalFront": "拍賣市場理論可以用咩生活比喻理解？",
+      "originalBack": "理解成 市場共識 大家ok咪升 唔ok就跌 整理區間就係大家傾計話咁樣升/跌o唔ok 凌亂即大家講唔掂數",
       "sourceDeck": "03_Trading/auction book theory",
       "quizEligible": true,
-      "corrected": true
+      "corrected": true,
+      "rewriteNote": "保留已修正生活比喻"
     },
     {
       "id": "1770793447120",
       "chapter": "ch8",
       "lesson": "russian",
-      "front": "how to 9 buy method",
-      "back": "when there is a obivous big large trend\nbuy the close \n在收盤價買入\n止損放低d  金額少d\n博唔到就走",
+      "front": "俄式「9 買法」點做？",
+      "back": "當有明顯大 trend 時，在收盤價買入（buy the close）。止損放低啲、倉位細啲；博唔到就走。",
+      "originalFront": "how to 9 buy method",
+      "originalBack": "when there is a obivous big large trend\nbuy the close \n在收盤價買入\n止損放低d  金額少d\n博唔到就走",
       "sourceDeck": "03_Trading/russian method",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "中文化俄式方法"
     },
     {
       "id": "1770793536985",
       "chapter": "ch8",
       "lesson": "russian",
-      "front": "how to find if the trend turns weak",
-      "back": "long wig,candle become small,candle may overlapping",
+      "front": "點樣判斷 trend 轉弱？",
+      "back": "出現長影線、K 棒變細、K 棒開始重疊。",
+      "originalFront": "how to find if the trend turns weak",
+      "originalBack": "long wig,candle become small,candle may overlapping",
       "sourceDeck": "03_Trading/russian method",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全三徵象"
     },
     {
       "id": "1770793645304",
       "chapter": "ch8",
       "lesson": "russian",
-      "front": "how  to buy the deep",
-      "back": "when it has a large trend for 20-30 kbars,suddnely a extreme big candle,wait for the price close,the do the oppsite direction\n\nplesase use this with other such as lg",
+      "front": "「buy the deep」點做？",
+      "back": "大 trend 行咗 20–30 根 K 後，突然出現極大 K 棒，等收盤後做相反方向。請配合 liquidity grab 等其他信號使用。",
+      "originalFront": "how  to buy the deep",
+      "originalBack": "when it has a large trend for 20-30 kbars,suddnely a extreme big candle,wait for the price close,the do the oppsite direction\n\nplesase use this with other such as lg",
       "sourceDeck": "03_Trading/russian method",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 kbars 條件"
     },
     {
       "id": "1770793921539",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "to find the correct altcoin,what 指標is important?4 of them",
-      "back": "核心共識：籌碼叛變概率\nap指標 : 非自然，人造盤面\nchips vacuum:籌碼抽乾\nvisula ignition:大時框走勢",
+      "front": "揀 altcoin 有四個重要指標，係咩？",
+      "back": "核心共識（籌碼叛變概率）、AP 指標（非自然人造盤面）、chips vacuum（籌碼抽乾）、visual ignition（大時框走勢）。",
+      "originalFront": "to find the correct altcoin,what 指標is important?4 of them",
+      "originalBack": "核心共識：籌碼叛變概率\nap指標 : 非自然，人造盤面\nchips vacuum:籌碼抽乾\nvisula ignition:大時框走勢",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留四指標"
     },
     {
       "id": "1770794062580",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "two way to entry",
-      "back": "1.buy at the low\n2.wait for the middle when the main wave start",
+      "front": "altcoin 有兩種入場方式，係咩？",
+      "back": "1. 低位買入\n2. 等主浪啟動後在中段入場",
+      "originalFront": "two way to entry",
+      "originalBack": "1.buy at the low\n2.wait for the middle when the main wave start",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全兩路"
     },
     {
       "id": "1770794091322",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "回調時fvg會？",
-      "back": "輕鬆跌破",
+      "front": "回調時 FVG 通常會點？",
+      "back": "回調時 FVG 通常會輕鬆被跌破。",
+      "originalFront": "回調時fvg會？",
+      "originalBack": "輕鬆跌破",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": false,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770794107692",
       "chapter": "ch3",
       "lesson": "fvg_ob",
-      "front": "fvg真正用意係",
-      "back": "動力既confirm",
+      "front": "FVG 真正用意係咩？",
+      "back": "FVG 的真正用意是動能的 confirm。",
+      "originalFront": "fvg真正用意係",
+      "originalBack": "動力既confirm",
       "sourceDeck": "03_Trading/basic",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "補全句子"
     },
     {
       "id": "1770794413499",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "甚麼是ap指標",
-      "back": "幣價起飛前會用高頻ai 測試\n測試人造頻率\n用來決定是不是快起飛了",
+      "front": "甚麼是 AP 指標？",
+      "back": "幣價起飛前會用高頻 AI 測試人造頻率，用來判斷是否快起飛。",
+      "originalFront": "甚麼是ap指標",
+      "originalBack": "幣價起飛前會用高頻ai 測試\n測試人造頻率\n用來決定是不是快起飛了",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "展開 AP 定義"
     },
     {
       "id": "1770794612757",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "甚麼是cv 籌碼真空",
-      "back": "系統計算的浮籌枯竭\nlp/orderbook同步抽\n看的是不是有多少買 而是市場止有多少貨 當貨源歸邊 價格多少係佢話事 升得極快",
+      "front": "甚麼是 CV（籌碼真空）？",
+      "back": "系統計算浮籌枯竭，LP/order book 同步抽乾。重點唔係有幾多買盤，而係市場剩幾多貨。貨源歸邊時價格升得極快。",
+      "originalFront": "甚麼是cv 籌碼真空",
+      "originalBack": "系統計算的浮籌枯竭\nlp/orderbook同步抽\n看的是不是有多少買 而是市場止有多少貨 當貨源歸邊 價格多少係佢話事 升得極快",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "保留 CV 邏輯"
     },
     {
       "id": "1770794708684",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "甚麼是vi 視覺點火",
-      "back": "要騙散戶接貨\n我們要做的是跟上莊家 坐順風車",
+      "front": "甚麼是 VI（視覺點火）？",
+      "back": "VI 用來騙散戶接貨。我們要做的是跟上莊家，坐順風車。",
+      "originalFront": "甚麼是vi 視覺點火",
+      "originalBack": "要騙散戶接貨\n我們要做的是跟上莊家 坐順風車",
       "sourceDeck": "03_Trading/altcoin",
       "quizEligible": true,
-      "corrected": false
+      "corrected": true,
+      "rewriteNote": "補全 VI"
     },
     {
       "id": "1770794755997",
       "chapter": "ch9",
       "lesson": "altcoin",
-      "front": "lv +cc 真空加共識",
-      "back": "決定了能不能燃料夠不夠",
+      "front": "LV 加 CC（真空加共識）代表咩？",
+      "back": "LV 加 CC 決定燃料夠唔夠，即升勢有冇足夠動力。",
+      "originalFront": "lv +cc 真空加共識",
+      "originalBack": "決定了能不能燃料夠不夠",
       "sourceDeck": "03_Trading/altcoin",
-      "quizEligible": false,
-      "corrected": false
+      "quizEligible": true,
+      "corrected": true,
+      "rewriteNote": "展開「燃料」"
     }
-  ]
+  ],
+  "brand": {
+    "name": "火狗trade",
+    "tutor": "火狗",
+    "tagline": "火狗導師交易複習室"
+  }
 }

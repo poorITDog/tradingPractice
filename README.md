@@ -11,7 +11,7 @@ Repo：[`poorITDog/tradingPractice`](https://github.com/poorITDog/tradingPractic
 ```bash
 python3 -m http.server 8765
 # 交易練習室：http://localhost:8765/
-# 結構化複習（鋒學）：http://localhost:8765/study/
+# 火狗trade 複習：http://localhost:8765/study/
 ```
 
 GitHub Pages（啟用後）：`https://pooritdog.github.io/tradingPractice/`  
@@ -35,7 +35,7 @@ GitHub Pages（啟用後）：`https://pooritdog.github.io/tradingPractice/`
 - 倉位表：每列 **市價平倉／反手**（對齊 Bybit／OKX 操作密度）
 - Google Drive：設定頁連接，備份至 `apex-trade-lab-v1.json`（與 Solara 分開）
 - 歷史回放：規劃中，見 [`ROADMAP-REPLAY-DRIVE.md`](ROADMAP-REPLAY-DRIVE.md)
-- **Trade Study Lab（鋒學）**：獨立學習站 [`study/`](study/) — 將 Anki `03_Trading` 118 卡重組為 9 章課＋閃卡／測驗／SRS
+- **火狗trade**：獨立學習站 [`study/`](study/) — 導師火狗；將 Anki `03_Trading` 118 卡潤色並重組為 9 章課＋閃卡／應用考試／少量圖表題
 
 介面為**繁體中文書面語**。
 
