@@ -18,6 +18,11 @@ const paths = [
   '/lib/drive.js',
   '/RANKING.md',
   '/ROADMAP-REPLAY-DRIVE.md',
+  '/study/',
+  '/study/index.html',
+  '/study/app.css',
+  '/study/app.js',
+  '/study/data/curriculum.json',
 ];
 
 for (const p of paths) {
