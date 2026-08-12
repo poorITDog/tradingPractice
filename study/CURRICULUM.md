@@ -1,4 +1,4 @@
-# Trade Study Lab — Locked Curriculum (pre-build gate)
+# 火狗trade — Curriculum
 
 Cards: **118/118 mapped**. Corrected: 7. Quiz-eligible: 100.
 

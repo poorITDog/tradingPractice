@@ -268,9 +268,33 @@ button.again { background: color-mix(in srgb, var(--down) 18%, var(--bg2)); bord
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
+.quiz-graph {
+  margin: 12px 0;
+  padding: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.quiz-graph-svg {
+  width: 100%;
+  overflow-x: auto;
+}
+.quiz-graph-svg svg {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  margin: 0 auto;
+}
+.quiz-graph figcaption {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.hidden { display: none !important; }
 @media (max-width: 640px) {
-  .brand-mark { font-size: 24px; }
+  .brand-mark { font-size: 22px; }
   .flash .body { font-size: 17px; }
   .top-actions { width: 100%; margin-left: 0; }
   .top-actions button { flex: 1; }
+  .quiz-graph-svg svg { min-width: 280px; }
 }
