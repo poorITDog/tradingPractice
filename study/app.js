@@ -29,19 +29,27 @@ function defaultProgress() {
   };
 }
 
+function isPlainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
 function loadProgress() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultProgress();
     const p = JSON.parse(raw);
-    if (p.schemaVersion !== 1 || typeof p.cardState !== 'object') {
+    if (
+      p.schemaVersion !== 1
+      || !isPlainObject(p.cardState)
+      || !isPlainObject(p.chapterPassed)
+    ) {
       toast('進度格式不相容，已重置（原資料無法讀取）');
       return defaultProgress();
     }
     return {
       schemaVersion: 1,
-      cardState: p.cardState || {},
-      chapterPassed: p.chapterPassed || {},
+      cardState: p.cardState,
+      chapterPassed: p.chapterPassed,
       updatedAt: p.updatedAt || Date.now(),
     };
   } catch (_) {
@@ -70,12 +78,30 @@ function cardsOf(chapterId, lessonId = null) {
 }
 
 function cardState(id) {
+  if (progress.cardState[id] != null && !isPlainObject(progress.cardState[id])) {
+    delete progress.cardState[id];
+  }
   if (!progress.cardState[id]) {
     progress.cardState[id] = {
       reps: 0, bucket: 'new', due: 0, streakGood: 0, lastResult: null, seen: false,
     };
   }
   return progress.cardState[id];
+}
+
+function assertChapterOpen(chId, { allowOptionalPrereqToast = true } = {}) {
+  const ch = chapterById(chId);
+  if (!ch) {
+    toast('找不到章節');
+    go('#/');
+    return null;
+  }
+  if (!isChapterUnlocked(ch)) {
+    if (allowOptionalPrereqToast) toast('請先通過先修章節測驗');
+    go('#/');
+    return null;
+  }
+  return ch;
 }
 
 function chapterReviewPct(chId) {
@@ -96,6 +122,8 @@ function isChapterUnlocked(ch) {
 
 function dueCards(now = Date.now()) {
   return curriculum.cards.filter((c) => {
+    const ch = chapterById(c.chapter);
+    if (!ch || !isChapterUnlocked(ch)) return false;
     const s = cardState(c.id);
     return s.seen && s.due <= now;
   });
@@ -329,8 +357,8 @@ function buildMcq(card, pool) {
 }
 
 function startQuiz(chId) {
-  const ch = chapterById(chId);
-  if (!ch) return go('#/');
+  const ch = assertChapterOpen(chId);
+  if (!ch) return;
   if (chapterReviewPct(chId) < 100) {
     toast('請先完成整章閃卡');
     return go(`#/chapter/${chId}`);
@@ -443,6 +471,8 @@ function renderSearch() {
     $('#hits').querySelectorAll('[data-id]').forEach((b) => {
       b.onclick = () => {
         const card = curriculum.cards.find((x) => x.id === b.dataset.id);
+        if (!card) return;
+        if (!assertChapterOpen(card.chapter)) return;
         startDrill([card], '搜尋結果', '#/search');
       };
     });
@@ -486,8 +516,9 @@ function render() {
   if (route.name === 'home') return renderHome();
   if (route.name === 'chapter') return renderChapter(route.id);
   if (route.name === 'drill') {
+    const ch = assertChapterOpen(route.id);
+    if (!ch) return;
     const cards = cardsOf(route.id, route.lesson);
-    const ch = chapterById(route.id);
     const title = route.lesson
       ? `${ch.title} · ${ch.lessons.find((l) => l.id === route.lesson)?.title || route.lesson}`
       : `${ch.title} · 整章`;
