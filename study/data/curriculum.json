@@ -504,15 +504,15 @@
           "id": "ch2_q10",
           "type": "definition_mcq",
           "difficulty": "medium",
-          "prompt": "內部流動性（internal/DOL）主要指？",
+          "prompt": "細時框（如 1h）打到流動性，對照更大時框（如 4h）嚟理解嗰次取流動性——呢個概念最接近？",
           "choices": [
-            "A. 前日高低",
-            "B. 趨勢內部波段高低",
-            "C. 開市價",
-            "D. 資金費率"
+            "DOL（細週期流動性相對大週期流動性）",
+            "只係指外部流動性高低點止損單",
+            "等同 FVG 空隙本身",
+            "只係指成交量放大"
           ],
-          "answer": "B. 趨勢內部波段高低",
-          "explain": "DOL＝打內部流動性，與外部舊高低相對。",
+          "answer": "DOL（細週期流動性相對大週期流動性）",
+          "explain": "DOL 強調大/小流動性層級，例如 1h 相對 4h。",
           "graph": null
         }
       ]
@@ -1326,7 +1326,7 @@
             "D. 與時段無關"
           ],
           "answer": "B. 區分 discount zone（偏多買）同 premium zone（偏空）",
-          "explain": "T1 AC 用於分 premium/discount。",
+          "explain": "Anchor candle 首先係警號：提醒市場開始行動。喺 T1，你亦會用 9:53 AC 位置去分 discount／premium zone。",
           "graph": null
         },
         {
@@ -1884,27 +1884,27 @@
       "id": "1770199729668",
       "chapter": "ch7",
       "lesson": "intro",
-      "front": "anchor candle 是甚麼？",
-      "back": "anchor candle 是打完流動性後、穿過之前橫盤區間的那根 K 棒。",
+      "front": "Anchor candle 是甚麼？",
+      "back": "Anchor candle 像一個「鬧鐘／警號」：提醒你市場開始做動作（action）了。\n它同流動性有關——當這根 K 出現，代表市場開始圍繞流動性採取行動，你要用它來對齊後續觀察同操作節奏。",
       "originalFront": "anchor candle 是？",
       "originalBack": "打完動動性穿過之前橫盤的candle",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "修正「動動性」為流動性"
+      "rewriteNote": "用戶確認：anchor=提醒市場開始action嘅警號，關乎流動性"
     },
     {
       "id": "1770199889296",
       "chapter": "ch7",
       "lesson": "intro",
       "front": "請列出 TT、BT、T1、T2、T3 的夏令時間。",
-      "back": "BT 消息時間：8:30\nBT 開市時間：9:30\nT1 anchor candle：9:53\nT2 anchor candle：10:34\nT3 anchor candle：11:10\n\n【時區】以上為美國東部夏令時間 EDT（UTC−4）。標準時間 EST（UTC−5）各點順延 +1 小時。請以 America/New_York 為準。",
+      "back": "TT：BT 前 1 小時（相對 BT 開市 9:30 → 8:30）\nBT 消息時間：8:30\nBT 開市時間：9:30\nT1 anchor candle：9:53\nT2 anchor candle：10:34\nT3 anchor candle：11:10\n\n【時區】以上為美國東部夏令時間 EDT（UTC−4）。標準時間 EST（UTC−5）各點順延 +1 小時。請以 America/New_York 為準。",
       "originalFront": "列出所有tt,bt,t1,t2,t3 時間 夏令",
       "originalBack": "bt 消息時間：8：30\nbt 開市時間：9：30\nt1 anchor candle:9:53\nt2 anchor candle:10:34\nt3 anchor candle:11:10\n\n【時區】以上為美國東部夏令時間 EDT（UTC−4）。標準時間 EST（UTC−5）各點順延 +1 小時。請以 America/New_York 為準。",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "保留時間表與 EST 註記"
+      "rewriteNote": "用戶確認：TT=BT前1小時；SMT確認；時間表補TT"
     },
     {
       "id": "1770200001220",
@@ -1924,13 +1924,13 @@
       "chapter": "ch7",
       "lesson": "t1",
       "front": "T1 的時間軸是怎樣的？",
-      "back": "9:30 開市\n9:53 T1 anchor candle：用來判斷所在 zone（discount zone 較適合買入，premium zone 較適合做空）\n9:55 T1 start，通常開始假火\n10:02 最常見的真實趨勢啟動點\n10:20 T1 end",
+      "back": "9:30 開市\n9:53 T1 anchor candle：呢根係「警號 K」，提醒市場開始行動（同流動性有關）；同時用佢位置區分 discount zone（較適合買）同 premium zone（較適合做空）\n9:55 T1 start，通常開始假火\n10:02 最常見的真實趨勢啟動點\n10:20 T1 end",
       "originalFront": "列出t1時間軸",
       "originalBack": "9：30開市\n9：53\n t1 anchor candle 呢支用來in which zone\n區分discount zone(better for buy)同premium zone (better for short)\n9:55 t1 start通常開始假火\n10：02 最常見啟真實趨勢動點\n10:20 t1 end",
       "sourceDeck": "03_Trading/時間打火",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "保留 premium/discount 與時間點"
+      "rewriteNote": "結合用戶：anchor=警號；保留T1用AC分premium/discount嘅操作用法"
     },
     {
       "id": "1770200781236",
@@ -2196,14 +2196,14 @@
       "id": "1770605680875",
       "chapter": "ch6",
       "lesson": "spatial",
-      "front": "OHLC 同 OLHC 分別代表咩假火行為？",
-      "back": "一支 K 棒常常會先出現假火，再用收盤方向確認。\nOHLC（open → high → low → close）：先向上掃流動性（打高），再向下走，常見於偏空嘅假火。\nOLHC（open → low → high → close）：先向下掃流動性（打低），再向上走，常見於偏多嘅假火。\n重點係睇「先掃邊邊」，唔好只睇最終顏色。",
+      "front": "OHLC 同 OLHC 分別係咩？代表咩假火路徑？",
+      "back": "OHLC = Open → High → Low → Close：K 線路徑先去高位，再落低位後收盤，常見解讀為先向上掃流動性再向下。\nOLHC = Open → Low → High → Close：K 線路徑先去低位，再冲高後收盤，常見解讀為先向下掃流動性再向上。\n記住縮寫本身就係路徑順序；假火方向跟住「先掃邊邊」去判斷。",
       "originalFront": "what is olhc ohlc",
       "originalBack": "一支k棒 會先假火\nOHLC:open high low close \n假火打上面 先上再下 冇力下跌\nOLHC:open low high close\n假火打上面 再先下再上 強力上漲",
       "sourceDeck": "03_Trading/空間打火",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "澄清 OHLC=先高後低；OLHC=先低後高（修正潤色時兩邊都寫打上面嘅錯誤）"
+      "rewriteNote": "用戶確認：即 open-high-low-close / open-low-high-close 路徑"
     },
     {
       "id": "1770605948586",
@@ -2489,7 +2489,7 @@
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "修正原卡 bullish 筆誤"
+      "rewriteNote": "用戶確認：A LL + B HL = bullish SMT 理解正確"
     },
     {
       "id": "1770707449618",
@@ -2535,13 +2535,13 @@
       "chapter": "ch2",
       "lesson": "structure",
       "front": "甚麼是 DOL？",
-      "back": "DOL 指打內部流動性（draw on liquidity / internal liquidity）。",
+      "back": "DOL 講嘅係「大流動性 vs 小流動性」嘅相對關係。\n例如喺細時框（如 1 小時）打到嘅流動性，對照更大時框（如 4 小時）嚟睇，呢次取流動性就可以叫 DOL。\n重點係細週期流動性相對大週期流動性嘅層級，唔係單一死記某個價位名。",
       "originalFront": "what is dol",
       "originalBack": "打內部流動性",
       "sourceDeck": "03_Trading/basic",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "保留 DOL"
+      "rewriteNote": "用戶確認：DOL=細TF流動性相對大TF（如1h vs 4h）"
     },
     {
       "id": "1770707756301",
@@ -3210,14 +3210,14 @@
       "id": "1770793447120",
       "chapter": "ch8",
       "lesson": "russian",
-      "front": "俄式「9 買法」點做？",
-      "back": "當有明顯大 trend 時，在收盤價買入（buy the close）。止損放低啲、倉位細啲；博唔到就走。",
+      "front": "「9 買法」係點做？（呢度嘅「9」係粵語）",
+      "back": "呢度嘅「9」係粵語，意思近似「隨便／唔使諗咁多」。\n當有明顯大趨勢時，可以直接 buy the close（收盤價買入），止損放近啲、倉位細啲；博唔到就走。\n重點係趨勢夠清楚時，唔好過度分析，簡單跟收盤入場。",
       "originalFront": "how to 9 buy method",
       "originalBack": "when there is a obivous big large trend\nbuy the close \n在收盤價買入\n止損放低d  金額少d\n博唔到就走",
       "sourceDeck": "03_Trading/russian method",
       "quizEligible": true,
       "corrected": true,
-      "rewriteNote": "中文化俄式方法"
+      "rewriteNote": "用戶確認：9=粵語隨便，不是數字方法名"
     },
     {
       "id": "1770793536985",
